@@ -1,0 +1,46 @@
+[Unit]
+Description=Major League Physics accounts and parties
+After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=mlp-social
+Group=mlp-social
+WorkingDirectory=/opt/mlp-social/app
+ExecStart=/opt/mlp-social/runtime/bin/node --max-old-space-size=96 /opt/mlp-social/app/server.mjs
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=18081
+Environment=DATABASE_PATH=/var/lib/mlp-social/social.sqlite
+Environment=TRUST_PROXY=1
+Environment=AUTH_CONCURRENCY=2
+Environment=UV_THREADPOOL_SIZE=2
+StateDirectory=mlp-social
+StateDirectoryMode=0700
+UMask=0077
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+MemoryHigh=256M
+MemoryMax=320M
+MemorySwapMax=64M
+CPUQuota=40%
+CPUWeight=10
+Nice=10
+TasksMax=64
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target

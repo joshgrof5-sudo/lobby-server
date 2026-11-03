@@ -18,6 +18,14 @@ async function fixture(t, options={}) {
   return {...service,api,register};
 }
 
+test('small-server password hashing concurrency is bounded',async t=>{
+  assert.throws(()=>createService({authConcurrency:0}),/AUTH_CONCURRENCY/);
+  assert.throws(()=>createService({authConcurrency:NaN}),/AUTH_CONCURRENCY/);
+  const {register}=await fixture(t,{authConcurrency:1});
+  const responses=await Promise.all([register('first_player'),register('second_player')]);
+  assert.deepEqual(responses.map(r=>r.status).sort(),[200,503]);
+});
+
 test('username ownership: case insensitive, race safe, password protected and session revocable',async t=>{
   const {api,register,db}=await fixture(t);
   const responses=await Promise.all([register('Slugger'),register('slugger')]);

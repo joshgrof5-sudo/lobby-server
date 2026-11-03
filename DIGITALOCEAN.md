@@ -2,6 +2,20 @@
 
 Target: `174.138.88.57`. No remote changes have been made by adding these files.
 
+## Native setup for this Droplet (no Docker required)
+
+The inspected machine is Ubuntu 24.04 x86_64 with about 1 GiB RAM, 575 MiB currently available, the existing game on UDP 7777, and no Node/Docker/reverse proxy installed. `install-digitalocean.sh` is an initial installer for that setup. Run it as root only after inspecting the host.
+
+The installer checks for collisions and at least 400 MiB available RAM, downloads Node 24 from nodejs.org and verifies the archive's SHA-256 against its published manifest, clones this feature branch, and runs the server tests. It installs Node privately under `/opt/mlp-social/runtime`, adds the `mlp-social` service account and systemd unit, and stores accounts in `/var/lib/mlp-social`. It does not change the system Node, install packages, restart the other game, or change firewall/proxy settings. It refuses to overwrite an existing deployment.
+
+The service listens only on `127.0.0.1:18081`, limits password hashing to two concurrent requests, and has a 320 MiB memory ceiling and 40% of one CPU. Resource limits reduce interference, but the other game's peak usage still needs monitoring. Only this service restarts on failure. The installer reports its health and the current UDP 7777 listener when done. A trusted HTTPS hostname and proxy are a separate, later step; the game URL must not change before that is verified.
+
+```sh
+bash install-digitalocean.sh
+```
+
+For diagnostics: `systemctl status mlp-social --no-pager` and `journalctl -u mlp-social -n 30 --no-pager`. To stop only baseball: `systemctl stop mlp-social`. Keep its data directory when rolling back. The Compose instructions below are an alternative for machines that already use Docker.
+
 First inspect the machine. Keep the existing game's services, ports, proxy configuration, containers and storage. Do not run a global Docker cleanup, replace the default proxy site, restart Docker, or flush firewall rules.
 
 ## 1. Inspect before installing or starting anything

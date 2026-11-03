@@ -17,7 +17,8 @@ class ApiError extends Error {
 }
 function requireValue(value, status, message) { if (!value) throw new ApiError(status, message); }
 
-export function createService({ database = ':memory:', clock = () => Date.now(), trustProxy = false, authLimit = 12 } = {}) {
+export function createService({ database = ':memory:', clock = () => Date.now(), trustProxy = false, authLimit = 12, authConcurrency = 6 } = {}) {
+  if (!Number.isInteger(authConcurrency) || authConcurrency < 1 || authConcurrency > 6) throw new Error('AUTH_CONCURRENCY must be an integer from 1 to 6.');
   if (database !== ':memory:') mkdirSync(dirname(resolve(database)), { recursive: true });
   const db = new DatabaseSync(database);
   db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
@@ -109,7 +110,7 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
       bucket.count++; limits.set(key,bucket);
       if (limits.size > 10000) for (const [address,entry] of limits) if (entry.until <= clock()) limits.delete(address);
       requireValue(bucket.count <= authLimit,429,'Too many attempts. Try again in a minute.');
-      requireValue(activeAuth < 6,503,'Sign-in is busy. Try again shortly.');
+      requireValue(activeAuth < authConcurrency,503,'Sign-in is busy. Try again shortly.');
       const data = await body(req); const username = normalize(data.username); const password = String(data.password ?? '');
       requireValue(/^[a-z][a-z0-9_]{2,19}$/.test(username),400,'Use 3–20 letters, numbers or underscores, starting with a letter.');
       requireValue(password.length >= 10 && Buffer.byteLength(password) <= 256,400,'Use a password with 10–256 characters.');
@@ -229,7 +230,7 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const service = createService({ database:process.env.DATABASE_PATH || './data/social.sqlite', trustProxy:process.env.TRUST_PROXY === '1' });
-  service.server.listen(Number(process.env.PORT || 8080),'0.0.0.0',() => console.log('MLP social service listening'));
+  const service = createService({ database:process.env.DATABASE_PATH || './data/social.sqlite', trustProxy:process.env.TRUST_PROXY === '1', authConcurrency:Number(process.env.AUTH_CONCURRENCY || 6) });
+  service.server.listen(Number(process.env.PORT || 8080),process.env.HOST || '0.0.0.0',() => console.log('MLP social service listening'));
   for (const signal of ['SIGTERM','SIGINT']) process.on(signal,async()=>{await service.close();process.exit(0);});
 }
