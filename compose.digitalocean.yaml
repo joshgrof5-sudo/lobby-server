@@ -1,0 +1,37 @@
+name: mlp-social
+services:
+  social:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:18081:8080"
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      DATABASE_PATH: /data/social.sqlite
+      TRUST_PROXY: "1"
+    volumes:
+      - accounts:/data
+    cpus: 0.5
+    mem_limit: 512m
+    pids_limit: 64
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "node", "--input-type=module", "-e", "const r=await fetch('http://127.0.0.1:8080/health'); if(!r.ok || (await r.json()).service!=='mlp-social') process.exit(1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+volumes:
+  accounts:

@@ -1,5 +1,7 @@
 # Major League Physics lobby server
 
+For the existing DigitalOcean Droplet, see [DIGITALOCEAN.md](DIGITALOCEAN.md). It describes an isolated deployment alongside the other game, with separate account storage and a dedicated HTTPS hostname.
+
 This branch adds unique account usernames, password sign-in, accepted friends, party invites/codes, presence, and verified multiplayer connection tickets for game version 1.1.0. The existing Python lobby list remains in the repository for older deployments. The new game requires `server.mjs`.
 
 ## Update the existing Render service
