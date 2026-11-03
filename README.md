@@ -1,0 +1,39 @@
+# Major League Physics lobby server
+
+This branch adds unique account usernames, password sign-in, accepted friends, party invites/codes, presence, and verified multiplayer connection tickets for game version 1.1.0. The existing Python lobby list remains in the repository for older deployments. The new game requires `server.mjs`.
+
+## Update the existing Render service
+
+Do not merge this branch into an automatically deployed Python service until its runtime and storage are configured. Deploy this branch directly while updating the runtime, or merge it and update the service configuration together.
+
+1. Open **lobby-server-75iv** in the Render Dashboard. Under **Settings > Build > Source > Edit**, select this repository, the updated branch, and the **Node** runtime. Use build command `npm install` and start command `npm start`. Node 24 is selected by `.node-version`.
+2. Attach a persistent disk mounted at `/var/data`. **Render requires a paid service for persistent disks.** Do not launch real accounts with an ephemeral database: usernames, passwords and friendships would be lost on redeploy. Review Render's pricing before purchasing anything.
+3. Set environment variables `DATABASE_PATH=/var/data/social.sqlite` and `TRUST_PROXY=1`. Render provides `PORT`. Set the health check path to `/health`.
+4. Deploy. Verify that `https://lobby-server-75iv.onrender.com/health` returns `{"service":"mlp-social","version":1}`. Keep one service instance using this disk. The existing game server URL can stay the same.
+5. Test account creation, sign-in after restart, accepted friend requests, an invite, and two game clients joining the same party before releasing the game update.
+
+Reference: [changing Render runtimes](https://render.com/docs/native-runtimes#changing-a-services-runtime), [persistent disks](https://render.com/docs/disks).
+
+This branch has not been deployed just by adding these files. The old `python lobby_server.py` command continues running the old lobby list until Render's runtime/start command are changed. The Dockerfile is an alternative to the native Node runtime.
+
+## Run locally
+
+Node 24 or newer; no third-party dependencies:
+
+```sh
+npm test
+npm start
+```
+
+Default port: 8080. Default database: `./data/social.sqlite`. For local game testing, set `MLP_SOCIAL_URL=http://127.0.0.1:8080` in the Godot process environment. Remote services require HTTPS.
+
+## Account and multiplayer behavior
+
+- Usernames are permanent, case-insensitive, 3–20 letters/digits/underscores, and start with a letter. A unique database constraint resolves simultaneous signups.
+- Passwords use salted scrypt hashes; session tokens and connection tickets are stored as hashes. The game saves its session token, never its password. There is no password recovery flow yet.
+- Friends must accept requests. Invites go to accepted friends. Joining by party code requires sign-in. Parties support 14 players for Online and 8 for Derby; only their leader can publish the game route.
+- The ENet handshake checks one-use account tickets. Player-supplied display names cannot impersonate another account.
+- Presence expires after 75 seconds. Friendships and account ownership survive restarts. Back up SQLite with its backup tools.
+- The authenticated route publisher replaces anonymous `POST /lobby`. Public discovery remains `GET /lobbies?v=1.1.0`. Old builds do not use the new account protocol.
+
+Game traffic still uses the game's ENet/UDP transport. The service provides account identity and party discovery, not a relay. Hosts need a reachable UDP port through UPnP, forwarding, or a reachable LAN.

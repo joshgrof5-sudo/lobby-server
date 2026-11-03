@@ -1,0 +1,235 @@
+import http from 'node:http';
+import { DatabaseSync } from 'node:sqlite';
+import { randomBytes, scrypt as scryptCallback, timingSafeEqual, createHash } from 'node:crypto';
+import { promisify } from 'node:util';
+import { isIP } from 'node:net';
+import { mkdirSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const scrypt = promisify(scryptCallback);
+const id = () => randomBytes(16).toString('hex');
+const token = () => randomBytes(32).toString('base64url');
+const digest = value => createHash('sha256').update(value).digest('hex');
+const normalize = value => String(value ?? '').trim().toLowerCase();
+class ApiError extends Error {
+  constructor(status, message) { super(message); this.status = status; }
+}
+function requireValue(value, status, message) { if (!value) throw new ApiError(status, message); }
+
+export function createService({ database = ':memory:', clock = () => Date.now(), trustProxy = false, authLimit = 12 } = {}) {
+  if (database !== ':memory:') mkdirSync(dirname(resolve(database)), { recursive: true });
+  const db = new DatabaseSync(database);
+  db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
+    CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE COLLATE NOCASE, salt TEXT NOT NULL, password_hash TEXT NOT NULL, seen INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS sessions(hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS friends(a TEXT NOT NULL REFERENCES users(id), b TEXT NOT NULL REFERENCES users(id), PRIMARY KEY(a,b), CHECK(a<b));
+    CREATE TABLE IF NOT EXISTS requests(id TEXT PRIMARY KEY, sender TEXT NOT NULL REFERENCES users(id), receiver TEXT NOT NULL REFERENCES users(id), UNIQUE(sender,receiver), CHECK(sender<>receiver));
+    CREATE TABLE IF NOT EXISTS parties(id TEXT PRIMARY KEY, code TEXT NOT NULL UNIQUE, host TEXT NOT NULL REFERENCES users(id), ip TEXT NOT NULL, lan_ip TEXT NOT NULL DEFAULT '', port INTEGER NOT NULL DEFAULT 7000, mode TEXT NOT NULL, started INTEGER NOT NULL DEFAULT 0, public INTEGER NOT NULL DEFAULT 0, version TEXT NOT NULL DEFAULT '1.1.0');
+    CREATE TABLE IF NOT EXISTS members(user_id TEXT PRIMARY KEY REFERENCES users(id), party_id TEXT NOT NULL REFERENCES parties(id) ON DELETE CASCADE);
+    CREATE TABLE IF NOT EXISTS invites(id TEXT PRIMARY KEY, sender TEXT NOT NULL REFERENCES users(id), receiver TEXT NOT NULL REFERENCES users(id), party_id TEXT NOT NULL REFERENCES parties(id) ON DELETE CASCADE, UNIQUE(receiver,party_id));
+    CREATE TABLE IF NOT EXISTS tickets(hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), party_id TEXT NOT NULL REFERENCES parties(id) ON DELETE CASCADE, expires INTEGER NOT NULL);
+  `);
+  const run = (sql, ...args) => db.prepare(sql).run(...args);
+  const one = (sql, ...args) => db.prepare(sql).get(...args);
+  const all = (sql, ...args) => db.prepare(sql).all(...args);
+  const limits = new Map();
+  let activeAuth = 0;
+  const now = () => Math.floor(clock() / 1000);
+  const publicUser = user => ({ id: user.id, username: user.username });
+  const pair = (a,b) => a < b ? [a,b] : [b,a];
+  const areFriends = (a,b) => a !== b && !!one('SELECT 1 FROM friends WHERE a=? AND b=?', ...pair(a,b));
+  const membership = user => one('SELECT p.* FROM parties p JOIN members m ON p.id=m.party_id WHERE m.user_id=?', user);
+  const authenticated = req => {
+    const authorization = req.headers.authorization ?? '';
+    requireValue(/^Bearer [A-Za-z0-9_-]{43}$/.test(authorization), 401, 'Sign in to continue.');
+    const user = one('SELECT u.* FROM users u JOIN sessions s ON u.id=s.user_id WHERE s.hash=? AND s.expires>?', digest(authorization.slice(7)), now());
+    requireValue(user, 401, 'Your session expired. Sign in again.');
+    return user;
+  };
+  const ipFor = req => {
+    const raw = trustProxy ? String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim() : req.socket.remoteAddress;
+    const ip = String(raw ?? '').replace(/^::ffff:/, '');
+    requireValue(isIP(ip), 400, 'Could not identify your connection.');
+    return ip;
+  };
+  const transaction = action => {
+    db.exec('BEGIN IMMEDIATE');
+    try { const result = action(); db.exec('COMMIT'); return result; }
+    catch (error) { db.exec('ROLLBACK'); throw error; }
+  };
+  const cleanup = () => {
+    run('DELETE FROM sessions WHERE expires<=?', now());
+    run('DELETE FROM tickets WHERE expires<=?', now());
+    run('DELETE FROM parties WHERE host IN (SELECT id FROM users WHERE seen<?)', now()-75);
+    run('DELETE FROM members WHERE user_id IN (SELECT id FROM users WHERE seen<?)', now()-75);
+  };
+  const partyView = party => {
+    if (!party) return null;
+    const host = one('SELECT id,username FROM users WHERE id=?', party.host);
+    const members = all('SELECT u.id,u.username FROM users u JOIN members m ON u.id=m.user_id WHERE m.party_id=? ORDER BY u.username', party.id);
+    return { id: party.id, code: party.code, host_id: host.id, host_username: host.username, ip: party.ip, lan_ip: party.lan_ip, port: party.port, mode: party.mode,
+      started: !!party.started, public: !!party.public, max: party.mode === 'derby' ? 8 : 14, members, version: party.version };
+  };
+  const leaveParty = userId => {
+    const party = membership(userId);
+    if (!party) return;
+    if (party.host === userId) run('DELETE FROM parties WHERE id=?', party.id);
+    else run('DELETE FROM members WHERE user_id=?', userId);
+  };
+  const state = user => ({
+    user: publicUser(user), party: partyView(membership(user.id)),
+    friends: all('SELECT u.id,u.username,u.seen FROM users u JOIN friends f ON (f.a=? AND f.b=u.id) OR (f.b=? AND f.a=u.id) ORDER BY u.username', user.id,user.id)
+      .map(friend => { const party = membership(friend.id); return { ...publicUser(friend), online: friend.seen >= now()-60, party: friend.seen >= now()-60 ? partyView(party) : null }; }),
+    incoming: all('SELECT r.id,u.username FROM requests r JOIN users u ON r.sender=u.id WHERE r.receiver=? ORDER BY u.username', user.id),
+    outgoing: all('SELECT r.id,u.username FROM requests r JOIN users u ON r.receiver=u.id WHERE r.sender=? ORDER BY u.username', user.id),
+    invites: all('SELECT i.id,i.party_id,u.username FROM invites i JOIN users u ON u.id=i.sender WHERE i.receiver=?', user.id)
+      .map(invite => ({ ...invite, party: partyView(one('SELECT * FROM parties WHERE id=?', invite.party_id)) })),
+    sent_invites: all('SELECT i.id,u.username FROM invites i JOIN users u ON u.id=i.receiver WHERE i.sender=?',user.id),
+  });
+  async function body(req) {
+    let size = 0; const chunks = [];
+    for await (const chunk of req) {
+      size += chunk.length; requireValue(size <= 8192, 413, 'Request is too large.'); chunks.push(chunk);
+    }
+    try { const data = JSON.parse(Buffer.concat(chunks).toString() || '{}'); requireValue(data && typeof data === 'object' && !Array.isArray(data),400,'Invalid request.'); return data; }
+    catch { throw new ApiError(400, 'Invalid request.'); }
+  }
+  async function route(req) {
+    const url = new URL(req.url, 'http://localhost'); const path = url.pathname; const method = req.method;
+    cleanup();
+    if (method === 'GET' && (path === '/' || path === '/health')) return { service: 'mlp-social', version: 1 };
+    if (method === 'GET' && path === '/lobbies') {
+      return all('SELECT * FROM parties WHERE public=1 AND started=0 AND version=?', url.searchParams.get('v') || '1.1.0').map(p => ({ ...partyView(p), name: one('SELECT username FROM users WHERE id=?',p.host).username, players: one('SELECT COUNT(*) AS n FROM members WHERE party_id=?',p.id).n }));
+    }
+    if (path === '/v1/auth/register' || path === '/v1/auth/login') {
+      requireValue(method === 'POST',405,'Use POST.');
+      const key = ipFor(req), bucket = limits.get(key) ?? { count: 0, until: clock()+60000 };
+      if (bucket.until <= clock()) { bucket.count=0; bucket.until=clock()+60000; }
+      bucket.count++; limits.set(key,bucket);
+      if (limits.size > 10000) for (const [address,entry] of limits) if (entry.until <= clock()) limits.delete(address);
+      requireValue(bucket.count <= authLimit,429,'Too many attempts. Try again in a minute.');
+      requireValue(activeAuth < 6,503,'Sign-in is busy. Try again shortly.');
+      const data = await body(req); const username = normalize(data.username); const password = String(data.password ?? '');
+      requireValue(/^[a-z][a-z0-9_]{2,19}$/.test(username),400,'Use 3–20 letters, numbers or underscores, starting with a letter.');
+      requireValue(password.length >= 10 && Buffer.byteLength(password) <= 256,400,'Use a password with 10–256 characters.');
+      activeAuth++;
+      try {
+        let user = one('SELECT * FROM users WHERE username=?',username);
+        if (path.endsWith('/register')) {
+          requireValue(!user,409,'That username is already taken.');
+          const salt = randomBytes(16).toString('hex');
+          const hash = await scrypt(password,salt,64,{ N:32768,r:8,p:1,maxmem:64*1024*1024 });
+          user = { id:id(), username, salt, password_hash:hash.toString('hex') };
+          try { run('INSERT INTO users VALUES(?,?,?,?,?)', user.id,username,salt,user.password_hash,now()); }
+          catch(error) { if (String(error.message).includes('UNIQUE')) throw new ApiError(409,'That username is already taken.'); throw error; }
+        } else {
+          // Derive even for unknown accounts to avoid a fast account-enumeration path.
+          const salt = user?.salt ?? '00000000000000000000000000000000';
+          const hash = await scrypt(password,salt,64,{ N:32768,r:8,p:1,maxmem:64*1024*1024 });
+          requireValue(user && timingSafeEqual(hash,Buffer.from(user.password_hash,'hex')),401,'Username or password is incorrect.');
+          run('UPDATE users SET seen=? WHERE id=?',now(),user.id);
+        }
+        const access = token();
+        run('INSERT INTO sessions VALUES(?,?,?)',digest(access),user.id,now()+30*86400);
+        return { token:access, user:publicUser(user) };
+      } finally { activeAuth--; }
+    }
+    const user = authenticated(req);
+    if (method === 'POST' && path === '/v1/auth/logout') {
+      leaveParty(user.id); run('DELETE FROM sessions WHERE hash=?',digest(req.headers.authorization.slice(7))); return { ok:true };
+    }
+    if (method === 'GET' && path === '/v1/me') return { user:publicUser(user) };
+    if (method === 'GET' && path === '/v1/social') return state(user);
+    if (method === 'POST' && path === '/v1/presence') { run('UPDATE users SET seen=? WHERE id=?',now(),user.id); return state(user); }
+    const data = await body(req);
+    if (method === 'POST' && path === '/v1/friends/request') {
+      const target = one('SELECT * FROM users WHERE username=?',normalize(data.username));
+      requireValue(target,404,'No player has that username.');
+      requireValue(target.id !== user.id,400,'That is your own username.');
+      requireValue(!areFriends(user.id,target.id),409,'You are already friends.');
+      requireValue(!one('SELECT 1 FROM requests WHERE (sender=? AND receiver=?) OR (sender=? AND receiver=?)',user.id,target.id,target.id,user.id),409,'A friend request is already pending.');
+      requireValue(one('SELECT COUNT(*) AS n FROM requests WHERE sender=?',user.id).n < 50,429,'You have too many pending requests.');
+      run('INSERT INTO requests VALUES(?,?,?)',id(),user.id,target.id); return state(user);
+    }
+    if (method === 'POST' && ['/v1/friends/accept','/v1/friends/decline'].includes(path)) {
+      const request = one('SELECT * FROM requests WHERE id=?',String(data.request_id ?? ''));
+      requireValue(request && request.receiver === user.id,404,'Friend request was not found.');
+      transaction(() => { if (path.endsWith('/accept')) run('INSERT OR IGNORE INTO friends VALUES(?,?)',...pair(request.sender,user.id)); run('DELETE FROM requests WHERE (sender=? AND receiver=?) OR (sender=? AND receiver=?)',request.sender,user.id,user.id,request.sender); });
+      return state(user);
+    }
+    if (method === 'POST' && path === '/v1/friends/remove') {
+      const target = one('SELECT id FROM users WHERE username=?',normalize(data.username));
+      requireValue(target,404,'Player was not found.');
+      transaction(() => { run('DELETE FROM friends WHERE a=? AND b=?',...pair(user.id,target.id)); run('DELETE FROM invites WHERE (sender=? AND receiver=?) OR (sender=? AND receiver=?)',user.id,target.id,target.id,user.id); });
+      return state(user);
+    }
+    if (method === 'POST' && path === '/v1/parties/create') {
+      requireValue(!membership(user.id),409,'Leave your current party first.');
+      const mode = data.mode === 'derby' ? 'derby' : 'classic';
+      const partyId = id(), code = randomBytes(6).toString('hex').toUpperCase();
+      transaction(() => { run('INSERT INTO parties(id,code,host,ip,mode) VALUES(?,?,?,?,?)',partyId,code,user.id,ipFor(req),mode); run('INSERT INTO members VALUES(?,?)',user.id,partyId); run('UPDATE users SET seen=? WHERE id=?',now(),user.id); });
+      return state(user);
+    }
+    if (method === 'POST' && path === '/v1/parties/route') {
+      const party = membership(user.id); requireValue(party && party.host === user.id,403,'Only the party leader can publish the lobby.');
+      requireValue(Number.isInteger(data.port) && data.port>=1024 && data.port<=65535,400,'Invalid game port.');
+      const lan = String(data.lan_ip ?? ''); requireValue(!lan || isIP(lan),400,'Invalid local address.');
+      run('UPDATE parties SET ip=?,lan_ip=?,port=?,started=?,public=?,mode=?,version=? WHERE id=?',ipFor(req),lan,data.port,data.started?1:0,data.public?1:0,data.mode === 'derby' ? 'derby':'classic',String(data.version ?? '1.1.0').slice(0,24),party.id);
+      return state(user);
+    }
+    if (method === 'POST' && path === '/v1/parties/invite') {
+      const party = membership(user.id), target = one('SELECT * FROM users WHERE username=?',normalize(data.username));
+      requireValue(party && !party.started,409,'Create a party before inviting a friend.');
+      requireValue(target && areFriends(user.id,target.id),403,'You can invite accepted friends.');
+      requireValue(!membership(target.id),409,'Your friend is already in a party.');
+      run('INSERT OR IGNORE INTO invites VALUES(?,?,?,?)',id(),user.id,target.id,party.id); return state(user);
+    }
+    if (method === 'POST' && path === '/v1/parties/decline') { run('DELETE FROM invites WHERE id=? AND receiver=?',String(data.invite_id ?? ''),user.id); return state(user); }
+    if (method === 'POST' && path === '/v1/parties/join') {
+      const code = String(data.code ?? '').replace(/[\s-]/g,'').toUpperCase();
+      const party = code ? one('SELECT * FROM parties WHERE code=?',code) : one('SELECT * FROM parties WHERE id=?',String(data.party_id ?? ''));
+      requireValue(party,404,'That party is no longer available.');
+      requireValue(!party.started,409,'That party is already playing.');
+      const current = membership(user.id);
+      requireValue(!current || current.id === party.id,409,'Leave your current party first.');
+      const invited = one('SELECT 1 FROM invites WHERE receiver=? AND party_id=?',user.id,party.id);
+      requireValue(code || invited || areFriends(user.id,party.host) || party.public,403,'Ask a friend for a party invitation.');
+      transaction(() => {
+        const count = one('SELECT COUNT(*) AS n FROM members WHERE party_id=?',party.id).n;
+        requireValue(current || count < (party.mode === 'derby' ? 8:14),409,'That party is full.');
+        run('INSERT OR IGNORE INTO members VALUES(?,?)',user.id,party.id);
+        run('DELETE FROM invites WHERE receiver=? AND party_id=?',user.id,party.id);
+        run('UPDATE users SET seen=? WHERE id=?',now(),user.id);
+      });
+      return state(user);
+    }
+    if (method === 'POST' && path === '/v1/parties/leave') { leaveParty(user.id); return state(user); }
+    if (method === 'POST' && path === '/v1/tickets') {
+      const party = membership(user.id); requireValue(party,403,'Join a party first.');
+      const proof = token(); run('INSERT INTO tickets VALUES(?,?,?,?)',digest(proof),user.id,party.id,now()+45);
+      return { ticket:proof, party_id:party.id };
+    }
+    if (method === 'POST' && path === '/v1/tickets/verify') {
+      const party = membership(user.id), proof = one('SELECT * FROM tickets WHERE hash=? AND expires>?',digest(String(data.ticket ?? '')),now());
+      requireValue(party && proof && proof.party_id === party.id && proof.user_id !== user.id,403,'Could not verify this player.');
+      requireValue(membership(proof.user_id)?.id === party.id,403,'This player left the party.');
+      run('DELETE FROM tickets WHERE hash=?',proof.hash);
+      return { user:publicUser(one('SELECT * FROM users WHERE id=?',proof.user_id)), party_id:party.id, host_id:party.host };
+    }
+    throw new ApiError(404,'This server does not support that feature.');
+  }
+  const server = http.createServer(async (req,res) => {
+    const headers = { 'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff' };
+    try { const result = await route(req); res.writeHead(200,headers).end(JSON.stringify(result)); }
+    catch(error) { const status = error.status ?? 500; if(status===500) console.error('Request failed:',error.message); res.writeHead(status,headers).end(JSON.stringify({ error: status===500 ? 'The server could not complete this request. Try again.':error.message })); }
+  });
+  server.requestTimeout = 15000; server.headersTimeout = 10000;
+  return { server, db, close: async () => { await new Promise(resolve => server.close(resolve)); db.close(); } };
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const service = createService({ database:process.env.DATABASE_PATH || './data/social.sqlite', trustProxy:process.env.TRUST_PROXY === '1' });
+  service.server.listen(Number(process.env.PORT || 8080),'0.0.0.0',() => console.log('MLP social service listening'));
+  for (const signal of ['SIGTERM','SIGINT']) process.on(signal,async()=>{await service.close();process.exit(0);});
+}
