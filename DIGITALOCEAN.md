@@ -16,6 +16,20 @@ bash install-digitalocean.sh
 
 For diagnostics: `systemctl status mlp-social --no-pager` and `journalctl -u mlp-social -n 30 --no-pager`. To stop only baseball: `systemctl stop mlp-social`. Keep its data directory when rolling back. The Compose instructions below are an alternative for machines that already use Docker.
 
+### HTTPS without an owned domain
+
+After the native service is healthy, `install-https-digitalocean.sh` adds a separate Caddy 2.11.7 proxy using `mlp-174-138-88-57.sslip.io`. This free DNS hostname depends on the third-party sslip.io service and the Droplet keeping its IP. It can be replaced by an owned domain later.
+
+The script refuses occupied TCP 80/443, downloads the official Caddy binary with a pinned SHA-512 checksum, validates its configuration, and adds only the `mlp-social-https` service with its own user and certificate storage. The proxy has a 160 MiB memory ceiling and 20% of one CPU. It does not restart the account service or the other game. Only TCP HTTP/HTTPS is enabled (no QUIC/UDP listener). If UFW is already active, it adds TCP 80 and 443 allow rules without enabling/resetting the firewall or changing game/SSH rules. A separate DigitalOcean cloud firewall may still need matching inbound rules.
+
+Run as root after reviewing the script:
+
+```sh
+bash install-https-digitalocean.sh
+```
+
+The script checks trusted HTTPS locally using the real hostname and certificate verification. External reachability must be checked separately before changing `online/social_server_url`. If certificate verification times out, do not rerun the initial installer: inspect `journalctl -u mlp-social-https -n 30 --no-pager`, DNS and firewall rules instead. Stopping only the proxy is `systemctl stop mlp-social-https`; keep `/var/lib/mlp-social-https` for certificate renewals.
+
 First inspect the machine. Keep the existing game's services, ports, proxy configuration, containers and storage. Do not run a global Docker cleanup, replace the default proxy site, restart Docker, or flush firewall rules.
 
 ## 1. Inspect before installing or starting anything
