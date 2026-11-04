@@ -2,6 +2,12 @@
 
 Target: `174.138.88.57`. No remote changes have been made by adding these files.
 
+## Update an existing installation for matchmaking
+
+The base account service is installed, and `https://mlp-174-138-88-57.sslip.io/health` has been checked externally. Run `bash update-digitalocean.sh` as root to add matchmaking. It stages the updated source, runs account and matchmaking tests, takes a consistent SQLite online backup under `/var/lib/mlp-social/backups`, and restarts only `mlp-social`. If the new health check fails, it restores the previous server code and keeps the database. It does not restart the HTTPS proxy, the other game, or change firewall rules. A successful response includes `"matchmaking":true`.
+
+The game uses protocol 1.2.0 for match tickets, searches for one minute, keeps parties on the same team, and automatically starts after position selection. The game project now uses the verified DigitalOcean HTTPS address. Actual match traffic still uses ENet between players; the Droplet provides the account/matchmaking API rather than a UDP relay.
+
 ## Native setup for this Droplet (no Docker required)
 
 The inspected machine is Ubuntu 24.04 x86_64 with about 1 GiB RAM, 575 MiB currently available, the existing game on UDP 7777, and no Node/Docker/reverse proxy installed. `install-digitalocean.sh` is an initial installer for that setup. Run it as root only after inspecting the host.

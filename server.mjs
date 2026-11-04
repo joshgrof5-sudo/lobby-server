@@ -30,6 +30,10 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
     CREATE TABLE IF NOT EXISTS members(user_id TEXT PRIMARY KEY REFERENCES users(id), party_id TEXT NOT NULL REFERENCES parties(id) ON DELETE CASCADE);
     CREATE TABLE IF NOT EXISTS invites(id TEXT PRIMARY KEY, sender TEXT NOT NULL REFERENCES users(id), receiver TEXT NOT NULL REFERENCES users(id), party_id TEXT NOT NULL REFERENCES parties(id) ON DELETE CASCADE, UNIQUE(receiver,party_id));
     CREATE TABLE IF NOT EXISTS tickets(hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), party_id TEXT NOT NULL REFERENCES parties(id) ON DELETE CASCADE, expires INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS matches(id TEXT PRIMARY KEY,host_party TEXT NOT NULL REFERENCES parties(id) ON DELETE CASCADE,phase TEXT NOT NULL,created INTEGER NOT NULL,deadline INTEGER NOT NULL,selection_deadline INTEGER NOT NULL DEFAULT 0,version TEXT NOT NULL,ip TEXT NOT NULL DEFAULT '',lan_ip TEXT NOT NULL DEFAULT '',port INTEGER NOT NULL DEFAULT 0);
+    CREATE TABLE IF NOT EXISTS match_parties(party_id TEXT PRIMARY KEY REFERENCES parties(id) ON DELETE CASCADE,match_id TEXT NOT NULL REFERENCES matches(id) ON DELETE CASCADE,team TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS match_members(user_id TEXT PRIMARY KEY REFERENCES users(id),match_id TEXT NOT NULL REFERENCES matches(id) ON DELETE CASCADE,party_id TEXT NOT NULL REFERENCES parties(id) ON DELETE CASCADE,ready INTEGER NOT NULL DEFAULT 0);
+    CREATE TABLE IF NOT EXISTS match_tickets(hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),match_id TEXT NOT NULL REFERENCES matches(id) ON DELETE CASCADE,expires INTEGER NOT NULL);
   `);
   const run = (sql, ...args) => db.prepare(sql).run(...args);
   const one = (sql, ...args) => db.prepare(sql).get(...args);
@@ -41,6 +45,32 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
   const pair = (a,b) => a < b ? [a,b] : [b,a];
   const areFriends = (a,b) => a !== b && !!one('SELECT 1 FROM friends WHERE a=? AND b=?', ...pair(a,b));
   const membership = user => one('SELECT p.* FROM parties p JOIN members m ON p.id=m.party_id WHERE m.user_id=?', user);
+  const userMatch = userId => one('SELECT g.* FROM matches g JOIN match_members m ON m.match_id=g.id WHERE m.user_id=?',userId);
+  const cancelGroup = party => {
+    const entry=one('SELECT * FROM match_parties WHERE party_id=?',party.id);
+    if(!entry)return;
+    const game=one('SELECT * FROM matches WHERE id=?',entry.match_id);
+    if(game.host_party===party.id)run('DELETE FROM matches WHERE id=?',game.id);
+    else {
+      run('DELETE FROM match_members WHERE party_id=?',party.id);
+      run('DELETE FROM match_parties WHERE party_id=?',party.id);
+      run('DELETE FROM match_tickets WHERE match_id=? AND user_id NOT IN (SELECT user_id FROM match_members WHERE match_id=?)',game.id,game.id);
+    }
+  };
+  const advanceMatches = () => {
+    for(const game of all("SELECT * FROM matches WHERE phase IN ('searching','connecting')")) {
+      const count=one('SELECT COUNT(*) AS n FROM match_members WHERE match_id=?',game.id).n;
+      if(game.phase==='searching' && (now()>=game.deadline || count===14))run("UPDATE matches SET phase='connecting',deadline=? WHERE id=?",now()+15,game.id);
+      const current=one('SELECT * FROM matches WHERE id=?',game.id);
+      if(current.phase!=='connecting')continue;
+      const missing=one('SELECT COUNT(*) AS n FROM match_members WHERE match_id=? AND ready=0',game.id).n;
+      if(missing && now()<current.deadline)continue;
+      if(missing) {
+        for(const group of all('SELECT DISTINCT p.* FROM parties p JOIN match_members m ON m.party_id=p.id WHERE m.match_id=? AND m.ready=0',game.id))cancelGroup(group);
+      }
+      if(one('SELECT 1 FROM matches WHERE id=?',game.id))run("UPDATE matches SET phase='selecting',selection_deadline=? WHERE id=?",now()+30,game.id);
+    }
+  };
   const authenticated = req => {
     const authorization = req.headers.authorization ?? '';
     requireValue(/^Bearer [A-Za-z0-9_-]{43}$/.test(authorization), 401, 'Sign in to continue.');
@@ -62,24 +92,34 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
   const cleanup = () => {
     run('DELETE FROM sessions WHERE expires<=?', now());
     run('DELETE FROM tickets WHERE expires<=?', now());
+    run('DELETE FROM match_tickets WHERE expires<=?', now());
+    for(const party of all('SELECT DISTINCT p.* FROM parties p JOIN members m ON m.party_id=p.id JOIN users u ON u.id=m.user_id WHERE u.seen<?',now()-75))cancelGroup(party);
     run('DELETE FROM parties WHERE host IN (SELECT id FROM users WHERE seen<?)', now()-75);
     run('DELETE FROM members WHERE user_id IN (SELECT id FROM users WHERE seen<?)', now()-75);
+    advanceMatches();
+  };
+  const matchView = game => {
+    if(!game)return null;
+    const leader=one('SELECT u.id,u.username FROM users u JOIN parties p ON p.host=u.id WHERE p.id=?',game.host_party);
+    const members=all('SELECT u.id,u.username,m.party_id,m.ready,p.team FROM match_members m JOIN users u ON u.id=m.user_id JOIN match_parties p ON p.party_id=m.party_id WHERE m.match_id=? ORDER BY u.username',game.id);
+    return {...game,host_id:leader.id,host_username:leader.username,members,max:14,bots:14-members.length,server_now:now(),remaining:Math.max(0,game.deadline-now()),selection_remaining:Math.max(0,game.selection_deadline-now())};
   };
   const partyView = party => {
     if (!party) return null;
     const host = one('SELECT id,username FROM users WHERE id=?', party.host);
     const members = all('SELECT u.id,u.username FROM users u JOIN members m ON u.id=m.user_id WHERE m.party_id=? ORDER BY u.username', party.id);
     return { id: party.id, code: party.code, host_id: host.id, host_username: host.username, ip: party.ip, lan_ip: party.lan_ip, port: party.port, mode: party.mode,
-      started: !!party.started, public: !!party.public, max: party.mode === 'derby' ? 8 : 14, members, version: party.version };
+      started: !!party.started, public: !!party.public, max: party.mode === 'derby' ? 8 : 7, members, version: party.version, matchmaking:!!one('SELECT 1 FROM match_parties WHERE party_id=?',party.id) };
   };
   const leaveParty = userId => {
     const party = membership(userId);
     if (!party) return;
+    cancelGroup(party);
     if (party.host === userId) run('DELETE FROM parties WHERE id=?', party.id);
     else run('DELETE FROM members WHERE user_id=?', userId);
   };
   const state = user => ({
-    user: publicUser(user), party: partyView(membership(user.id)),
+    user: publicUser(user), party: partyView(membership(user.id)), match:matchView(userMatch(user.id)),
     friends: all('SELECT u.id,u.username,u.seen FROM users u JOIN friends f ON (f.a=? AND f.b=u.id) OR (f.b=? AND f.a=u.id) ORDER BY u.username', user.id,user.id)
       .map(friend => { const party = membership(friend.id); return { ...publicUser(friend), online: friend.seen >= now()-60, party: friend.seen >= now()-60 ? partyView(party) : null }; }),
     incoming: all('SELECT r.id,u.username FROM requests r JOIN users u ON r.sender=u.id WHERE r.receiver=? ORDER BY u.username', user.id),
@@ -99,7 +139,7 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
   async function route(req) {
     const url = new URL(req.url, 'http://localhost'); const path = url.pathname; const method = req.method;
     cleanup();
-    if (method === 'GET' && (path === '/' || path === '/health')) return { service: 'mlp-social', version: 1 };
+    if (method === 'GET' && (path === '/' || path === '/health')) return { service: 'mlp-social', version: 1, matchmaking:true };
     if (method === 'GET' && path === '/lobbies') {
       return all('SELECT * FROM parties WHERE public=1 AND started=0 AND version=?', url.searchParams.get('v') || '1.1.0').map(p => ({ ...partyView(p), name: one('SELECT username FROM users WHERE id=?',p.host).username, players: one('SELECT COUNT(*) AS n FROM members WHERE party_id=?',p.id).n }));
     }
@@ -144,6 +184,58 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
     if (method === 'GET' && path === '/v1/social') return state(user);
     if (method === 'POST' && path === '/v1/presence') { run('UPDATE users SET seen=? WHERE id=?',now(),user.id); return state(user); }
     const data = await body(req);
+    if(method==='POST' && path==='/v1/matchmaking/join') {
+      const party=membership(user.id);
+      requireValue(party && party.host===user.id,403,'Only your party leader can find a match.');
+      requireValue(!party.started && party.mode==='classic',409,'Choose Online before finding a match.');
+      const existing=userMatch(user.id);
+      if(existing)return state(user);
+      const members=all('SELECT u.* FROM users u JOIN members m ON m.user_id=u.id WHERE m.party_id=?',party.id);
+      requireValue(members.length<=7,409,'Online parties support up to 7 players.');
+      requireValue(members.every(member=>member.seen>=now()-30),409,'Wait for everyone in your party to reconnect.');
+      const version=String(data.version ?? '1.2.0');
+      requireValue(version===party.version,409,'Everyone needs the same game update.');
+      transaction(()=>{
+        let game,team;
+        for(const candidate of all("SELECT * FROM matches WHERE phase='searching' AND deadline>? AND version=? ORDER BY created,id",now()+5,version)) {
+          const counts={Red:0,Blue:0};
+          for(const row of all('SELECT p.team,COUNT(*) AS n FROM match_members m JOIN match_parties p ON p.party_id=m.party_id WHERE m.match_id=? GROUP BY p.team',candidate.id))counts[row.team]=row.n;
+          const choices=['Red','Blue'].sort((a,b)=>counts[a]-counts[b]);
+          team=choices.find(side=>counts[side]+members.length<=7);
+          if(team){game=candidate;break;}
+        }
+        if(!game) {
+          game={id:id()};team='Red';
+          run("INSERT INTO matches(id,host_party,phase,created,deadline,version) VALUES(?,?,'searching',?,?,?)",game.id,party.id,now(),now()+60,version);
+        }
+        run('INSERT INTO match_parties VALUES(?,?,?)',party.id,game.id,team);
+        for(const member of members)run('INSERT INTO match_members(user_id,match_id,party_id) VALUES(?,?,?)',member.id,game.id,party.id);
+      });
+      advanceMatches();return state(user);
+    }
+    if(method==='POST' && ['/v1/matchmaking/cancel','/v1/matchmaking/fail'].includes(path)) {
+      const party=membership(user.id);requireValue(party,409,'Your party is no longer available.');
+      requireValue(path.endsWith('/fail') || party.host===user.id,403,'Only your party leader can cancel matchmaking.');
+      const game=userMatch(user.id);requireValue(path.endsWith('/fail') || !game || game.phase!=='playing',409,'Leave the match before finding another one.');
+      cancelGroup(party);return state(user);
+    }
+    if(method==='POST' && path==='/v1/matchmaking/route') {
+      const game=userMatch(user.id),party=membership(user.id);
+      requireValue(game && party && game.host_party===party.id && party.host===user.id,403,'Only the match host can publish this route.');
+      requireValue(Number.isInteger(data.port)&&data.port>=1024&&data.port<=65535,400,'Invalid game port.');
+      const lan=String(data.lan_ip ?? '');requireValue(!lan||isIP(lan),400,'Invalid local address.');
+      run('UPDATE matches SET ip=?,lan_ip=?,port=? WHERE id=?',ipFor(req),lan,data.port,game.id);return state(user);
+    }
+    if(method==='POST' && path==='/v1/matchmaking/ready') {
+      const game=userMatch(user.id);requireValue(game && ['searching','connecting'].includes(game.phase),409,'This match is no longer connecting.');
+      run('UPDATE match_members SET ready=1 WHERE user_id=?',user.id);advanceMatches();return state(user);
+    }
+    if(method==='POST' && path==='/v1/matchmaking/start') {
+      const game=userMatch(user.id),party=membership(user.id);
+      requireValue(game && party && game.host_party===party.id && party.host===user.id,403,'Only the match host can start this match.');
+      requireValue(game.phase==='selecting',409,'Wait for position selection.');
+      run("UPDATE matches SET phase='playing' WHERE id=?",game.id);return state(user);
+    }
     if (method === 'POST' && path === '/v1/friends/request') {
       const target = one('SELECT * FROM users WHERE username=?',normalize(data.username));
       requireValue(target,404,'No player has that username.');
@@ -169,7 +261,7 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
       requireValue(!membership(user.id),409,'Leave your current party first.');
       const mode = data.mode === 'derby' ? 'derby' : 'classic';
       const partyId = id(), code = randomBytes(6).toString('hex').toUpperCase();
-      transaction(() => { run('INSERT INTO parties(id,code,host,ip,mode) VALUES(?,?,?,?,?)',partyId,code,user.id,ipFor(req),mode); run('INSERT INTO members VALUES(?,?)',user.id,partyId); run('UPDATE users SET seen=? WHERE id=?',now(),user.id); });
+      transaction(() => { run('INSERT INTO parties(id,code,host,ip,mode,version) VALUES(?,?,?,?,?,?)',partyId,code,user.id,ipFor(req),mode,String(data.version ?? '1.1.0').slice(0,24)); run('INSERT INTO members VALUES(?,?)',user.id,partyId); run('UPDATE users SET seen=? WHERE id=?',now(),user.id); });
       return state(user);
     }
     if (method === 'POST' && path === '/v1/parties/route') {
@@ -182,6 +274,7 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
     if (method === 'POST' && path === '/v1/parties/invite') {
       const party = membership(user.id), target = one('SELECT * FROM users WHERE username=?',normalize(data.username));
       requireValue(party && !party.started,409,'Create a party before inviting a friend.');
+      requireValue(!one('SELECT 1 FROM match_parties WHERE party_id=?',party.id),409,'Cancel matchmaking before inviting another friend.');
       requireValue(target && areFriends(user.id,target.id),403,'You can invite accepted friends.');
       requireValue(!membership(target.id),409,'Your friend is already in a party.');
       run('INSERT OR IGNORE INTO invites VALUES(?,?,?,?)',id(),user.id,target.id,party.id); return state(user);
@@ -192,13 +285,14 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
       const party = code ? one('SELECT * FROM parties WHERE code=?',code) : one('SELECT * FROM parties WHERE id=?',String(data.party_id ?? ''));
       requireValue(party,404,'That party is no longer available.');
       requireValue(!party.started,409,'That party is already playing.');
+      requireValue(!one('SELECT 1 FROM match_parties WHERE party_id=?',party.id),409,'That party is finding or playing a match. Join them after this match.');
       const current = membership(user.id);
       requireValue(!current || current.id === party.id,409,'Leave your current party first.');
       const invited = one('SELECT 1 FROM invites WHERE receiver=? AND party_id=?',user.id,party.id);
       requireValue(code || invited || areFriends(user.id,party.host) || party.public,403,'Ask a friend for a party invitation.');
       transaction(() => {
         const count = one('SELECT COUNT(*) AS n FROM members WHERE party_id=?',party.id).n;
-        requireValue(current || count < (party.mode === 'derby' ? 8:14),409,'That party is full.');
+        requireValue(current || count < (party.mode === 'derby' ? 8:7),409,'That party is full.');
         run('INSERT OR IGNORE INTO members VALUES(?,?)',user.id,party.id);
         run('DELETE FROM invites WHERE receiver=? AND party_id=?',user.id,party.id);
         run('UPDATE users SET seen=? WHERE id=?',now(),user.id);
@@ -207,11 +301,25 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
     }
     if (method === 'POST' && path === '/v1/parties/leave') { leaveParty(user.id); return state(user); }
     if (method === 'POST' && path === '/v1/tickets') {
+      const game=userMatch(user.id);
+      if(game) {
+        requireValue(['searching','connecting'].includes(game.phase),409,'This match is no longer accepting connections.');
+        const proof=token();run('INSERT INTO match_tickets VALUES(?,?,?,?)',digest(proof),user.id,game.id,now()+45);
+        return {ticket:proof,party_id:game.id};
+      }
       const party = membership(user.id); requireValue(party,403,'Join a party first.');
       const proof = token(); run('INSERT INTO tickets VALUES(?,?,?,?)',digest(proof),user.id,party.id,now()+45);
       return { ticket:proof, party_id:party.id };
     }
     if (method === 'POST' && path === '/v1/tickets/verify') {
+      const game=userMatch(user.id);
+      if(game) {
+        const proof=one('SELECT * FROM match_tickets WHERE hash=? AND expires>?',digest(String(data.ticket??'')),now());
+        requireValue(['searching','connecting'].includes(game.phase)&&proof&&proof.match_id===game.id&&proof.user_id!==user.id&&userMatch(proof.user_id)?.id===game.id,403,'This player is not in your match.');
+        run('DELETE FROM match_tickets WHERE hash=?',proof.hash);
+        const leader=one('SELECT host FROM parties WHERE id=?',game.host_party);
+        return {user:publicUser(one('SELECT * FROM users WHERE id=?',proof.user_id)),party_id:game.id,host_id:leader.host};
+      }
       const party = membership(user.id), proof = one('SELECT * FROM tickets WHERE hash=? AND expires>?',digest(String(data.ticket ?? '')),now());
       requireValue(party && proof && proof.party_id === party.id && proof.user_id !== user.id,403,'Could not verify this player.');
       requireValue(membership(proof.user_id)?.id === party.id,403,'This player left the party.');

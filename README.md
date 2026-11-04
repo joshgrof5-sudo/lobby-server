@@ -2,7 +2,13 @@
 
 For the existing DigitalOcean Droplet, see [DIGITALOCEAN.md](DIGITALOCEAN.md). It describes an isolated deployment alongside the other game, with separate account storage and a dedicated HTTPS hostname.
 
-This branch adds unique account usernames, password sign-in, accepted friends, party invites/codes, presence, and verified multiplayer connection tickets for game version 1.1.0. The existing Python lobby list remains in the repository for older deployments. The new game requires `server.mjs`.
+This branch adds unique account usernames, password sign-in, accepted friends, persistent parties and matchmaking for game version 1.2.0. The existing Python lobby list remains in the repository for older deployments. The new game requires `server.mjs`.
+
+The DigitalOcean base service and HTTPS address have been verified. Run `update-digitalocean.sh` from the Droplet's root console to deploy matchmaking: it tests the update, backs up SQLite, and restarts only baseball. See [the update instructions](DIGITALOCEAN.md#update-an-existing-installation-for-matchmaking). Uploading this branch alone does not update the Droplet.
+
+## Online flow
+
+Create a party or play alone, then choose **Find match**. Parties of up to seven stay on the same team. Matchmaking gathers up to 14 humans for 60 seconds (or starts early when full), gives connections a short grace period, and fills remaining positions with the game's bots. Players have 30 seconds to choose positions; unpicked positions are assigned automatically. Matches start automatically, and original parties remain together afterward. The UI has no public lobby browser or manual host/start controls.
 
 ## Update the existing Render service
 
@@ -33,9 +39,9 @@ Default port: 8080. Default database: `./data/social.sqlite`. For local game tes
 
 - Usernames are permanent, case-insensitive, 3–20 letters/digits/underscores, and start with a letter. A unique database constraint resolves simultaneous signups.
 - Passwords use salted scrypt hashes; session tokens and connection tickets are stored as hashes. The game saves its session token, never its password. There is no password recovery flow yet.
-- Friends must accept requests. Invites go to accepted friends. Joining by party code requires sign-in. Parties support 14 players for Online and 8 for Derby; only their leader can publish the game route.
+- Friends must accept requests. Invites go to accepted friends. Joining by party code requires sign-in. Parties support 7 players for Online and 8 for legacy Derby. Matchmaking combines whole parties into matches with up to 14 humans.
 - The ENet handshake checks one-use account tickets. Player-supplied display names cannot impersonate another account.
 - Presence expires after 75 seconds. Friendships and account ownership survive restarts. Back up SQLite with its backup tools.
-- The authenticated route publisher replaces anonymous `POST /lobby`. Public discovery remains `GET /lobbies?v=1.1.0`. Old builds do not use the new account protocol.
+- Match hosts publish routes using authenticated matchmaking endpoints. Single-use match tickets verify players from different parties. Legacy private-party and lobby-list endpoints remain for older clients; the new UI uses matchmaking.
 
 Game traffic still uses the game's ENet/UDP transport. The service provides account identity and party discovery, not a relay. Hosts need a reachable UDP port through UPnP, forwarding, or a reachable LAN.
