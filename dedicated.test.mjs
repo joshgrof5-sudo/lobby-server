@@ -11,8 +11,8 @@ async function fixture(t){
   const api=async(account,path,data={},expected=200,extra={})=>{const r=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json',...(account?{Authorization:`Bearer ${account.token}`}:{...extra})},body:JSON.stringify(data)});const d=await r.json();assert.equal(r.status,expected,JSON.stringify(d));return d;};
   const register=username=>api(null,'/v1/auth/register',{username,password:'dedicated-test-password'});
   const captain=await register('dedicated_captain'),friend=await register('dedicated_friend');
-  const party=(await api(captain,'/v1/parties/create',{version:'1.4.2'})).party;await api(friend,'/v1/parties/join',{code:party.code});
-  const match=(await api(captain,'/v1/matchmaking/join',{version:'1.4.2'})).match;
+  const party=(await api(captain,'/v1/parties/create',{version:'1.4.3'})).party;await api(friend,'/v1/parties/join',{code:party.code});
+  const match=(await api(captain,'/v1/matchmaking/join',{version:'1.4.3'})).match;
   time+=60000;await api(captain,'/v1/presence');assert.equal(children.length,1);
   const child=children[0];
   const worker=(action,data={},expected=200,key=child.env.MLP_WORKER_KEY)=>api(null,'/internal/match',{action,match_id:match.id,...data},expected,{'X-MLP-Worker':key});
@@ -49,7 +49,7 @@ test('one disconnected party member does not remove their connected friends; wor
   const f=await fixture(t);await f.playing();
   await f.api(f.captain,'/v1/matchmaking/fail');
   const state=await f.api(f.friend,'/v1/presence');assert.equal(state.match.members.length,1);assert.equal(state.match.id,f.match.id);
-  await f.api(f.captain,'/v1/matchmaking/join',{version:'1.4.2'},409);
+  await f.api(f.captain,'/v1/matchmaking/join',{version:'1.4.3'},409);
   await f.api(f.captain,'/v1/parties/leave');
   assert.equal((await f.api(f.friend,'/v1/presence')).match.id,f.match.id);
   f.child.emit('exit',1);
@@ -58,8 +58,8 @@ test('one disconnected party member does not remove their connected friends; wor
 
 test('one-slot dedicated capacity queues another match and frees the slot after completion',async t=>{
   const f=await fixture(t);await f.playing();
-  const waiting=await f.register('waiting_player');await f.api(waiting,'/v1/parties/create',{version:'1.4.2'});
-  const next=(await f.api(waiting,'/v1/matchmaking/join',{version:'1.4.2'})).match;
+  const waiting=await f.register('waiting_player');await f.api(waiting,'/v1/parties/create',{version:'1.4.3'});
+  const next=(await f.api(waiting,'/v1/matchmaking/join',{version:'1.4.3'})).match;
   await f.api(f.captain,'/v1/presence');await f.api(f.friend,'/v1/presence');
   f.advance(60);
   const queued=(await f.api(waiting,'/v1/presence')).match;
@@ -74,8 +74,8 @@ test('an existing party can use the new game patch without losing its members',a
   await f.worker('finish');
   f.service.db.prepare('UPDATE parties SET version=?').run('1.3.0');
   await f.api(f.friend,'/v1/presence');
-  const updated=await f.api(f.captain,'/v1/matchmaking/join',{version:'1.4.2'});
-  assert.equal(updated.party.version,'1.4.2');
+  const updated=await f.api(f.captain,'/v1/matchmaking/join',{version:'1.4.3'});
+  assert.equal(updated.party.version,'1.4.3');
   assert.equal(updated.party.members.length,2);
   assert.equal(updated.match.members.length,2);
 });
