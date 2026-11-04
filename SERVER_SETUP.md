@@ -1,4 +1,4 @@
-# How Online works in 1.4.0
+# How Online works in 1.4.1
 
 The account service is already live. The dedicated-match build must be installed on the Droplet before the new Online client can find a match. The new client never falls back to running a match on a player's PC.
 
@@ -29,16 +29,18 @@ The account HTTPS proxy remains on TCP 80/443. Baseball matches use **UDP 7002**
 
 Use `server/install-dedicated-digitalocean.sh` from the published, pinned backend commit. It downloads the pinned archive, verifies SHA-256, runs backend tests, loads the actual headless field in a self-test, backs up SQLite, and adds the dedicated-game environment through a systemd drop-in. It restarts only `mlp-social`. It leaves HTTPS and the other game's service running. Failed health checks restore the previous baseball code/configuration and keep account data.
 
-Success prints `DEDICATED BASEBALL SERVER READY`. The live `/health` response must then contain `"dedicated_matches":true` and `"game_version":"1.4.0"`. A match worker opens UDP 7002 when a match is allocated; that port is normally idle between matches.
+Success prints `DEDICATED BASEBALL SERVER READY`. The live `/health` response must then contain `"dedicated_matches":true` and `"game_version":"1.4.1"`. A match worker opens UDP 7002 when a match is allocated; that port is normally idle between matches.
 
-Use the rebuilt `MajorLeaguePhysics.exe` on every player's computer. Old 1.2 clients cannot join 1.4.0 dedicated matches.
+Use the rebuilt `MajorLeaguePhysics.exe` on every player's computer. Old 1.2 clients cannot join 1.4.1 dedicated matches.
 
-Version 1.4.0 streams the actual full-body poses and equipment of human players as well as bots. Human poses travel on a separate small unreliable-ordered channel and are relayed by the dedicated server. Observers interpolate the recorded joints and skin instead of running another spring/IK simulation for a player holding the ball. Interaction event numbers reject poses sent before a punch or throw.
+Version 1.4.1 streams the actual full-body poses and equipment of human players as well as bots. Human poses travel on a separate small unreliable-ordered channel and are relayed by the dedicated server. Observers interpolate the recorded joints and skin instead of running another spring/IK simulation for a player holding the ball. Interaction event numbers reject poses sent before a punch or throw.
 
 The runtime retains the mound collision and mitt calibration even when graphics are stripped. Remote human equipment has one network owner; observer IK reads its final pose instead of repeatedly rotating or fitting it.
 
 Player colliders, gloves and rigs retain their stable peer-based names and ordered interaction effects from 1.3.3. Fielding and running speed is 25% higher than that build, with stronger acceleration and braking. The bottom punch/grab hint is removed.
 
-Each graphical client keeps a bounded 12-second recording of real athlete poses and baseball transforms at 20 Hz. Hits, home runs, outs, fouls and walks mark highlights. Once the live play is resolved, the server broadcasts one replay event and holds the next pitch for six seconds. Clients replay the contact and key finish using inert visual copies on the actual field, a moving camera and a Back to field button. Playback never changes the live ball, physics, scores, inventory or player transforms. Original cameras and HUD visibility return afterward; a local skip does not shorten the shared online pitch hold. The dedicated worker records no meshes or video and remains headless. Season completion waits for the final highlight before returning to its hub.
+Each graphical client keeps a bounded 20-second recording of real athlete poses and baseball transforms at 30 Hz. Replays retain the continuous play, beginning before the swing, and use recorded timestamps instead of squeezing every clip into a fixed duration. Foul balls cancel the pending replay. Near force outs, tags and contested safe arrivals mark a close call: only the recorded finish slows to 35% speed, with a tighter view of the players. The server computes a shared replay window from the play length and close-call finish, up to 26 seconds. Playback never changes live physics, scores, inventory or transforms. Cameras, HUD and fresh inputs return afterward. The worker stays headless and keeps the same resource limits.
+
+Version 1.4.1 also predicts the hitter's initial ball response immediately while retaining server validation, and broadcasts confirmed contact promptly. Ball rendering uses velocity prediction with small correction smoothing instead of permanently trailing a moving target. Bot snapshots run after the current tick's batting update at 30 Hz; an ordered contact-pose message puts the actual bat and hands on the ball before the hit appears. Older pre-contact ball/pose packets cannot undo that contact. No DNS, firewall, ports or database changes are required: update the game pack/backend together and use the matching Windows client. Baseball remains on UDP 7002 and the other game on UDP 7777.
 
 While fielding with an empty throwing hand, aim at a nearby teammate and tap left click to punch, hold to grab, and release to throw. The same tap/hold/release behavior uses the remappable controller grab button. Existing hand-sweep punches remain supported. A release that happens before the grab acknowledgement is buffered with its original aim. Server validation checks nearby bodies and world occlusion instead of a delayed animated hand position. Carrying uses a damped spring that remains stable across frame rates. Spectators, opponents and players beyond reach are not interaction targets; holding a baseball keeps the normal baseball throw controls.
