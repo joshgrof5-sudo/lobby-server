@@ -18,8 +18,8 @@ test('dedicated Godot owns the match and continues when its party captain leaves
   const base=`http://127.0.0.1:${service.server.address().port}`,password=randomBytes(24).toString('hex');
   const api=async(account,path,data={},status=200)=>{const r=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json',...(account?{Authorization:`Bearer ${account.token}`}:{})},body:JSON.stringify(data)});const d=await r.json();assert.equal(r.status,status,JSON.stringify(d));return d;};
   const captain=await api(null,'/v1/auth/register',{username:'server_captain',password}),friend=await api(null,'/v1/auth/register',{username:'server_friend',password});
-  const party=(await api(captain,'/v1/parties/create',{version:'1.3.1'})).party;await api(friend,'/v1/parties/join',{code:party.code});
-  await api(captain,'/v1/matchmaking/join',{version:'1.3.1'});
+  const party=(await api(captain,'/v1/parties/create',{version:'1.3.2'})).party;await api(friend,'/v1/parties/join',{code:party.code});
+  await api(captain,'/v1/matchmaking/join',{version:'1.3.2'});
   await api(captain,'/v1/matchmaking/route',{port:port+1},403);
   await api(null,'/internal/match',{match_id:'bad',action:'state'},403);
   function client(role){
