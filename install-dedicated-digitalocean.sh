@@ -14,7 +14,21 @@ for tool in curl tar sha256sum ss awk install runuser systemctl systemd-analyze;
 [[ -x $node && -f $app/server.mjs && -f $database && ! -L $app && ! -L $database ]] || { echo 'The existing baseball installation was not found.' >&2; exit 1; }
 [[ $release_sha =~ ^[0-9a-f]{64}$ ]] || { echo 'This installer has not been attached to a verified release yet.' >&2; exit 1; }
 systemctl is-active --quiet mlp-social.service
-[[ -z $(ss -H -lnu 'sport = :7002') ]] || { echo 'UDP 7002 is occupied. No services were changed.' >&2; exit 1; }
+# An upgrade may find our own match still running. Only accept listeners whose
+# processes belong to the baseball systemd service; never stop another service.
+listeners=$(ss -H -lnup 'sport = :7002')
+if [[ -n $listeners ]]; then
+    found_pid=0
+    remaining=$listeners
+    while [[ $remaining =~ pid=([0-9]+) ]]; do
+        listener_pid=${BASH_REMATCH[1]}
+        found_pid=1
+        grep -Eq '/mlp-social\.service(/|$)' "/proc/$listener_pid/cgroup" || { echo 'UDP 7002 belongs to another service. No services were changed.' >&2; exit 1; }
+        remaining=${remaining#*pid=$listener_pid}
+    done
+    (( found_pid == 1 )) || { echo 'Cannot identify the UDP 7002 listener. No services were changed.' >&2; exit 1; }
+    echo 'An existing baseball match is running. This update will disconnect it when baseball restarts.'
+fi
 available_kb=$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)
 (( available_kb >= 393216 )) || { echo 'Less than 384 MiB is available. Send this output before installing a match slot.' >&2; exit 1; }
 disk_kb=$(df -Pk /opt | awk 'NR==2 {print $4}')
@@ -62,6 +76,7 @@ rollback() {
 }
 systemctl stop mlp-social.service
 trap rollback ERR
+[[ -z $(ss -H -lnu 'sport = :7002') ]] || { echo 'UDP 7002 did not close after stopping baseball.' >&2; false; }
 for file in "${files[@]}"; do install -m 0644 "$staging/source/$file" "$app/$file"; done
 install -d -m 0755 /etc/systemd/system/mlp-social.service.d
 cat > "$dropin" <<UNIT
