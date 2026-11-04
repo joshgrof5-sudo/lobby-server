@@ -21,8 +21,8 @@ test('dedicated Godot owns the match and continues when its party captain leaves
   const base=`http://127.0.0.1:${service.server.address().port}`,password=randomBytes(24).toString('hex');
   const api=async(account,path,data={},status=200)=>{const r=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json',...(account?{Authorization:`Bearer ${account.token}`}:{})},body:JSON.stringify(data)});const d=await r.json();assert.equal(r.status,status,JSON.stringify(d));return d;};
   const captain=await api(null,'/v1/auth/register',{username:'server_captain',password}),friend=await api(null,'/v1/auth/register',{username:'server_friend',password});
-  const party=(await api(captain,'/v1/parties/create',{version:'1.3.3'})).party;await api(friend,'/v1/parties/join',{code:party.code});
-  await api(captain,'/v1/matchmaking/join',{version:'1.3.3'});
+  const party=(await api(captain,'/v1/parties/create',{version:'1.4.0'})).party;await api(friend,'/v1/parties/join',{code:party.code});
+  await api(captain,'/v1/matchmaking/join',{version:'1.4.0'});
   // Put this party on the fielding side so both humans can interact at once.
   service.db.prepare("UPDATE match_parties SET team='Blue'").run();
   await api(captain,'/v1/matchmaking/route',{port:port+1},403);
@@ -48,6 +48,7 @@ test('dedicated Godot owns the match and continues when its party captain leaves
   assert(common.length>=3,'Clients did not observe enough shared authoritative pose frames');
   for(const frame of common)assert.equal(first.get(frame),second.get(frame),'Party leader and member received different full-body poses');
   for(const client of [leader,member])assert.match(client.output(),/BOT_PITCH_POSE_VERIFIED_/);
+  for(const client of [leader,member])assert.match(client.output(),/HUMAN_POSE_RELAY_VERIFIED_/);
   for(const client of [leader,member]){assert.match(client.output(),/LIVE_PUNCH_OBSERVED_/);assert.match(client.output(),/LIVE_THROW_OBSERVED_/);}
   assert.match(logs,/DEDICATED MATCH PLAYING/);assert.doesNotMatch(logs,/SCRIPT ERROR|Assertion failed/);
   const state=await api(friend,'/v1/presence');assert.equal(state.match.phase,'playing');assert.equal(state.party.host_id,friend.user.id);assert.equal(service.pool.workers.size,1);
