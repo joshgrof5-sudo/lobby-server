@@ -163,7 +163,7 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
   async function route(req) {
     const url = new URL(req.url, 'http://localhost'); const path = url.pathname; const method = req.method;
     cleanup();
-    if (method === 'GET' && (path === '/' || path === '/health')) return { service: 'mlp-social', version: 1, matchmaking:true, account_inventory:true,dedicated_matches:!!pool,game_version:'1.4.3' };
+    if (method === 'GET' && (path === '/' || path === '/health')) return { service: 'mlp-social', version: 1, matchmaking:true, account_inventory:true,dedicated_matches:!!pool,game_version:'1.4.4' };
     if(method==='POST'&&path==='/internal/match'){
       const data=await body(req),worker=pool?.authenticate(String(data.match_id??''),req.headers['x-mlp-worker']);
       requireValue(worker,403,'Invalid match worker.');
@@ -247,9 +247,9 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
       requireValue(members.length<=7,409,'Online parties support up to 7 players.');
       requireValue(members.every(member=>member.seen>=now()-30),409,'Wait for everyone in your party to reconnect.');
       const version=String(data.version ?? '1.2.0');
-      if(pool&&version==='1.4.3'&&party.version!==version){run('UPDATE parties SET version=? WHERE id=?',version,party.id);party.version=version;}
+      if(pool&&version==='1.4.4'&&party.version!==version){run('UPDATE parties SET version=? WHERE id=?',version,party.id);party.version=version;}
       requireValue(version===party.version,409,'Everyone needs the same game update.');
-      if(pool)requireValue(version==='1.4.3',409,'Install the dedicated-server game update before finding a match.');
+      if(pool)requireValue(version==='1.4.4',409,'Install the dedicated-server game update before finding a match.');
       transaction(()=>{
         let game,team;
         for(const candidate of all("SELECT * FROM matches WHERE phase='searching' AND deadline>? AND version=? ORDER BY created,id",now()+5,version)) {
