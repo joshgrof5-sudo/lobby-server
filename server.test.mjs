@@ -80,6 +80,47 @@ test('friend requests, party invites, verified peer tickets and leader-only rout
   assert.equal((await api('/v1/social',undefined,bob.token)).party,null);
 });
 
+test('friend request inboxes are private, recipients can decline, senders can cancel, and reciprocal requests stay clear',async t=>{
+  const {api,register}=await fixture(t);
+  const alice=await register('alice'),bob=await register('bob'),eve=await register('eve');
+  assert.equal((await api('/v1/friends/request',{username:'alice'},alice.token)).status,400);
+  assert.equal((await api('/v1/friends/request',{username:'nobody_here'},alice.token)).status,404);
+  const sent=await api('/v1/friends/request',{username:' @BOB '},alice.token);
+  assert.equal(sent.outgoing[0].username,'bob');assert.equal(sent.incoming.length,0);
+  const inbox=await api('/v1/presence',{},bob.token),request=inbox.incoming[0];
+  assert.equal(request.username,'alice');assert.equal(inbox.outgoing.length,0);
+  assert.equal((await api('/v1/presence',{},eve.token)).incoming.length,0);
+  assert.equal((await api('/v1/friends/decline',{request_id:request.id},eve.token)).status,404);
+  assert.equal((await api('/v1/friends/accept',{request_id:request.id},alice.token)).status,404);
+  assert.equal((await api('/v1/friends/cancel',{request_id:request.id},bob.token)).status,404);
+  assert.equal((await api('/v1/friends/cancel',{request_id:request.id},eve.token)).status,404);
+  const crossed=await api('/v1/friends/request',{username:'alice'},bob.token);
+  assert.equal(crossed.status,409);assert.match(crossed.error,/Accept it in Requests/);
+  assert.equal((await api('/v1/friends/decline',{request_id:request.id},bob.token)).incoming.length,0);
+  assert.equal((await api('/v1/presence',{},alice.token)).outgoing.length,0);
+  const resent=await api('/v1/friends/request',{username:'bob'},alice.token);
+  assert.equal((await api('/v1/friends/cancel',{request_id:resent.outgoing[0].id},alice.token)).outgoing.length,0);
+  assert.equal((await api('/v1/presence',{},bob.token)).incoming.length,0);
+});
+
+test('accepted friends update on both accounts, presence expires, and removing a friend clears both sides and invitations',async t=>{
+  let time=Date.now();const {api,register}=await fixture(t,{clock:()=>time});
+  const alice=await register('alice'),bob=await register('bob');
+  const sent=await api('/v1/friends/request',{username:'bob'},alice.token);
+  const accepted=await api('/v1/friends/accept',{request_id:sent.outgoing[0].id},bob.token);
+  assert.equal(accepted.friends[0].username,'alice');assert.equal(accepted.incoming.length,0);
+  const own=await api('/v1/presence',{},alice.token);assert.equal(own.friends[0].username,'bob');assert.equal(own.outgoing.length,0);assert.equal(own.friends[0].online,true);
+  time+=61000;assert.equal((await api('/v1/presence',{},alice.token)).friends[0].online,false);
+  await api('/v1/presence',{},bob.token);
+  assert.equal((await api('/v1/presence',{},alice.token)).friends[0].online,true);
+  await api('/v1/parties/create',{},alice.token);await api('/v1/parties/invite',{username:'bob'},alice.token);
+  assert.equal((await api('/v1/presence',{},bob.token)).invites.length,1);
+  const removed=await api('/v1/friends/remove',{username:'bob'},alice.token);
+  assert.equal(removed.friends.length,0);assert.equal(removed.sent_invites.length,0);
+  const other=await api('/v1/presence',{},bob.token);assert.equal(other.friends.length,0);assert.equal(other.invites.length,0);
+  assert.equal((await api('/v1/parties/invite',{username:'bob'},alice.token)).status,403);
+});
+
 test('party code joining, capacity and offline cleanup',async t=>{
   let time=Date.now();
   const {api,register}=await fixture(t,{clock:()=>time});
@@ -101,9 +142,15 @@ test('ticket expiry, credentials persistence and expired session rejection',asyn
   await new Promise(resolve=>first.server.listen(0,'127.0.0.1',resolve));
   const url=`http://127.0.0.1:${first.server.address().port}`;
   const result=await fetch(url+'/v1/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'persistent',password:'long-password-value'})}).then(r=>r.json());
+  const friend=await fetch(url+'/v1/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'saved_friend',password:'long-password-value'})}).then(r=>r.json());
+  const sent=await fetch(url+'/v1/friends/request',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${result.token}`},body:JSON.stringify({username:'saved_friend'})}).then(r=>r.json());
   await first.close();
   const second=await fixture(t,{database,clock:()=>time});
   assert.equal((await second.api('/v1/me',undefined,result.token)).user.username,'persistent');
+  const inbox=await second.api('/v1/presence',{},friend.token);
+  assert.equal(inbox.incoming[0].id,sent.outgoing[0].id);assert.equal(inbox.incoming[0].username,'persistent');
+  await second.api('/v1/friends/accept',{request_id:inbox.incoming[0].id},friend.token);
+  assert.equal((await second.api('/v1/presence',{},result.token)).friends[0].username,'saved_friend');
   time+=31*86400000;
   assert.equal((await second.api('/v1/me',undefined,result.token)).status,401);
   t.after(()=>{for(const file of ['db.sqlite','db.sqlite-wal','db.sqlite-shm'])try{unlinkSync(join(directory,file));}catch(error){if(error.code!=='ENOENT')throw error;}rmdirSync(directory);});

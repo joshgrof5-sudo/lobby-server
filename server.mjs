@@ -108,8 +108,9 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
     if (!party) return null;
     const host = one('SELECT id,username FROM users WHERE id=?', party.host);
     const members = all('SELECT u.id,u.username FROM users u JOIN members m ON u.id=m.user_id WHERE m.party_id=? ORDER BY u.username', party.id);
+    const game=one('SELECT g.phase FROM matches g JOIN match_parties p ON p.match_id=g.id WHERE p.party_id=?',party.id);
     return { id: party.id, code: party.code, host_id: host.id, host_username: host.username, ip: party.ip, lan_ip: party.lan_ip, port: party.port, mode: party.mode,
-      started: !!party.started, public: !!party.public, max: party.mode === 'derby' ? 8 : 7, members, version: party.version, matchmaking:!!one('SELECT 1 FROM match_parties WHERE party_id=?',party.id) };
+      started: !!party.started || game?.phase==='playing', public: !!party.public, max: party.mode === 'derby' ? 8 : 7, members, version: party.version, matchmaking:!!game, phase:game?.phase ?? 'party' };
   };
   const leaveParty = userId => {
     const party = membership(userId);
@@ -237,13 +238,19 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
       run("UPDATE matches SET phase='playing' WHERE id=?",game.id);return state(user);
     }
     if (method === 'POST' && path === '/v1/friends/request') {
-      const target = one('SELECT * FROM users WHERE username=?',normalize(data.username));
+      const target = one('SELECT * FROM users WHERE username=?',normalize(data.username).replace(/^@/,''));
       requireValue(target,404,'No player has that username.');
       requireValue(target.id !== user.id,400,'That is your own username.');
       requireValue(!areFriends(user.id,target.id),409,'You are already friends.');
-      requireValue(!one('SELECT 1 FROM requests WHERE (sender=? AND receiver=?) OR (sender=? AND receiver=?)',user.id,target.id,target.id,user.id),409,'A friend request is already pending.');
+      requireValue(!one('SELECT 1 FROM requests WHERE sender=? AND receiver=?',target.id,user.id),409,`@${target.username} already sent you a request. Accept it in Requests.`);
+      requireValue(!one('SELECT 1 FROM requests WHERE sender=? AND receiver=?',user.id,target.id),409,'You already sent this player a request.');
       requireValue(one('SELECT COUNT(*) AS n FROM requests WHERE sender=?',user.id).n < 50,429,'You have too many pending requests.');
       run('INSERT INTO requests VALUES(?,?,?)',id(),user.id,target.id); return state(user);
+    }
+    if(method==='POST' && path==='/v1/friends/cancel') {
+      const request=one('SELECT * FROM requests WHERE id=?',String(data.request_id ?? ''));
+      requireValue(request && request.sender===user.id,404,'Sent request was not found.');
+      run('DELETE FROM requests WHERE id=?',request.id);return state(user);
     }
     if (method === 'POST' && ['/v1/friends/accept','/v1/friends/decline'].includes(path)) {
       const request = one('SELECT * FROM requests WHERE id=?',String(data.request_id ?? ''));

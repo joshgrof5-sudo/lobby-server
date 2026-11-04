@@ -10,6 +10,12 @@ The DigitalOcean base service and HTTPS address have been verified. Run `update-
 
 Create a party or play alone, then choose **Find match**. Parties of up to seven stay on the same team. Matchmaking gathers up to 14 humans for 60 seconds (or starts early when full), gives connections a short grace period, and fills remaining positions with the game's bots. Players have 30 seconds to choose positions; unpicked positions are assigned automatically. Matches start automatically, and original parties remain together afterward. The UI has no public lobby browser or manual host/start controls.
 
+## Friend requests
+
+Requests are private to their sender and recipient. The recipient can accept or decline; the sender can cancel a pending request. Accepting adds the friendship to both accounts. Removing a friend clears the relationship and outstanding party invitations on both accounts. Requests and accepted friendships are saved in SQLite and survive server restarts. Only the owning account can act on a request.
+
+The game updates friends every second while the panel is open, or within three seconds elsewhere. The Friends button counts pending requests and party invitations. Lists distinguish received requests, sent requests and accepted friends; statuses show Online, Offline, In a party, Finding a match or Playing. `npm test` covers these permissions and state changes. The game workspace also has a two-client UI test for automatic receipt, acceptance, party invitation/joining, removal and account switching.
+
 ## Update the existing Render service
 
 Do not merge this branch into an automatically deployed Python service until its runtime and storage are configured. Deploy this branch directly while updating the runtime, or merge it and update the service configuration together.
