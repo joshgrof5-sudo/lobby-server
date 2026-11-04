@@ -2,7 +2,7 @@
 
 For a shared DigitalOcean Droplet, see [DIGITALOCEAN.md](DIGITALOCEAN.md). Inspect the existing game's services before using the separate Compose deployment.
 
-Version 1.4.1 uses dedicated Godot match processes. Install `install-dedicated-digitalocean.sh` before enabling the new Online client. The account-only updater does not install a game runtime. See [the server explanation](SERVER_SETUP.md) for the connection flow, limits and deployment steps.
+Version 1.4.2 uses dedicated Godot match processes. Install `install-dedicated-digitalocean.sh` before enabling the new Online client. The account-only updater does not install a game runtime. See [the server explanation](SERVER_SETUP.md) for the connection flow, limits and deployment steps.
 
 The DigitalOcean account service is deployed at `https://mlp-174-138-88-57.sslip.io`. Live game checks confirm matchmaking and account inventory capabilities and authenticated account endpoints. The updater preserves the database and restarts only `mlp-social`.
 
