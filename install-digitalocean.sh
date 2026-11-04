@@ -34,7 +34,7 @@ sha256sum --check node.sha256
 tar -xJf "$archive" -C /opt/mlp-social/runtime --strip-components=1 --no-same-owner
 /opt/mlp-social/runtime/bin/node --version
 cd /opt/mlp-social/app
-/opt/mlp-social/runtime/bin/node --test server.test.mjs matchmaking.test.mjs
+UV_THREADPOOL_SIZE=2 nice -n 15 /opt/mlp-social/runtime/bin/node --test --test-concurrency=1 server.test.mjs matchmaking.test.mjs inventory.test.mjs
 
 # Existing software remains untouched; only this service account/unit is added.
 useradd --system --user-group --no-create-home --home-dir /var/lib/mlp-social --shell /usr/sbin/nologin mlp-social

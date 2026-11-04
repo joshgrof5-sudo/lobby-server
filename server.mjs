@@ -6,6 +6,7 @@ import { isIP } from 'node:net';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {createInventory} from './inventory.mjs';
 
 const scrypt = promisify(scryptCallback);
 const id = () => randomBytes(16).toString('hex');
@@ -35,6 +36,7 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
     CREATE TABLE IF NOT EXISTS match_members(user_id TEXT PRIMARY KEY REFERENCES users(id),match_id TEXT NOT NULL REFERENCES matches(id) ON DELETE CASCADE,party_id TEXT NOT NULL REFERENCES parties(id) ON DELETE CASCADE,ready INTEGER NOT NULL DEFAULT 0);
     CREATE TABLE IF NOT EXISTS match_tickets(hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),match_id TEXT NOT NULL REFERENCES matches(id) ON DELETE CASCADE,expires INTEGER NOT NULL);
   `);
+  const inventory=createInventory(db,clock);
   const run = (sql, ...args) => db.prepare(sql).run(...args);
   const one = (sql, ...args) => db.prepare(sql).get(...args);
   const all = (sql, ...args) => db.prepare(sql).all(...args);
@@ -101,13 +103,13 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
   const matchView = game => {
     if(!game)return null;
     const leader=one('SELECT u.id,u.username FROM users u JOIN parties p ON p.host=u.id WHERE p.id=?',game.host_party);
-    const members=all('SELECT u.id,u.username,m.party_id,m.ready,p.team FROM match_members m JOIN users u ON u.id=m.user_id JOIN match_parties p ON p.party_id=m.party_id WHERE m.match_id=? ORDER BY u.username',game.id);
+    const members=all('SELECT u.id,u.username,m.party_id,m.ready,p.team FROM match_members m JOIN users u ON u.id=m.user_id JOIN match_parties p ON p.party_id=m.party_id WHERE m.match_id=? ORDER BY u.username',game.id).map(member=>({...member,equipped:inventory.publicGear(member.id)}));
     return {...game,host_id:leader.id,host_username:leader.username,members,max:14,bots:14-members.length,server_now:now(),remaining:Math.max(0,game.deadline-now()),selection_remaining:Math.max(0,game.selection_deadline-now())};
   };
   const partyView = party => {
     if (!party) return null;
     const host = one('SELECT id,username FROM users WHERE id=?', party.host);
-    const members = all('SELECT u.id,u.username FROM users u JOIN members m ON u.id=m.user_id WHERE m.party_id=? ORDER BY u.username', party.id);
+    const members = all('SELECT u.id,u.username FROM users u JOIN members m ON u.id=m.user_id WHERE m.party_id=? ORDER BY u.username', party.id).map(member=>({...member,equipped:inventory.publicGear(member.id)}));
     const game=one('SELECT g.phase FROM matches g JOIN match_parties p ON p.match_id=g.id WHERE p.party_id=?',party.id);
     return { id: party.id, code: party.code, host_id: host.id, host_username: host.username, ip: party.ip, lan_ip: party.lan_ip, port: party.port, mode: party.mode,
       started: !!party.started || game?.phase==='playing', public: !!party.public, max: party.mode === 'derby' ? 8 : 7, members, version: party.version, matchmaking:!!game, phase:game?.phase ?? 'party' };
@@ -120,7 +122,7 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
     else run('DELETE FROM members WHERE user_id=?', userId);
   };
   const state = user => ({
-    user: publicUser(user), party: partyView(membership(user.id)), match:matchView(userMatch(user.id)),
+    user: publicUser(user), inventory:inventory.view(user.id),party: partyView(membership(user.id)), match:matchView(userMatch(user.id)),
     friends: all('SELECT u.id,u.username,u.seen FROM users u JOIN friends f ON (f.a=? AND f.b=u.id) OR (f.b=? AND f.a=u.id) ORDER BY u.username', user.id,user.id)
       .map(friend => { const party = membership(friend.id); return { ...publicUser(friend), online: friend.seen >= now()-60, party: friend.seen >= now()-60 ? partyView(party) : null }; }),
     incoming: all('SELECT r.id,u.username FROM requests r JOIN users u ON r.sender=u.id WHERE r.receiver=? ORDER BY u.username', user.id),
@@ -140,7 +142,7 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
   async function route(req) {
     const url = new URL(req.url, 'http://localhost'); const path = url.pathname; const method = req.method;
     cleanup();
-    if (method === 'GET' && (path === '/' || path === '/health')) return { service: 'mlp-social', version: 1, matchmaking:true };
+    if (method === 'GET' && (path === '/' || path === '/health')) return { service: 'mlp-social', version: 1, matchmaking:true, account_inventory:true };
     if (method === 'GET' && path === '/lobbies') {
       return all('SELECT * FROM parties WHERE public=1 AND started=0 AND version=?', url.searchParams.get('v') || '1.1.0').map(p => ({ ...partyView(p), name: one('SELECT username FROM users WHERE id=?',p.host).username, players: one('SELECT COUNT(*) AS n FROM members WHERE party_id=?',p.id).n }));
     }
@@ -185,6 +187,11 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
     if (method === 'GET' && path === '/v1/social') return state(user);
     if (method === 'POST' && path === '/v1/presence') { run('UPDATE users SET seen=? WHERE id=?',now(),user.id); return state(user); }
     const data = await body(req);
+    if(method==='POST' && path.startsWith('/v1/inventory/')){
+      const action=path.slice('/v1/inventory/'.length);
+      requireValue(['migrate','purchase','equip','earn','seen'].includes(action),404,'Unknown locker action.');
+      inventory[action](user.id,data);return state(user);
+    }
     if(method==='POST' && path==='/v1/matchmaking/join') {
       const party=membership(user.id);
       requireValue(party && party.host===user.id,403,'Only your party leader can find a match.');
@@ -325,13 +332,13 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
         requireValue(['searching','connecting'].includes(game.phase)&&proof&&proof.match_id===game.id&&proof.user_id!==user.id&&userMatch(proof.user_id)?.id===game.id,403,'This player is not in your match.');
         run('DELETE FROM match_tickets WHERE hash=?',proof.hash);
         const leader=one('SELECT host FROM parties WHERE id=?',game.host_party);
-        return {user:publicUser(one('SELECT * FROM users WHERE id=?',proof.user_id)),party_id:game.id,host_id:leader.host};
+        return {user:{...publicUser(one('SELECT * FROM users WHERE id=?',proof.user_id)),equipped:inventory.publicGear(proof.user_id)},party_id:game.id,host_id:leader.host};
       }
       const party = membership(user.id), proof = one('SELECT * FROM tickets WHERE hash=? AND expires>?',digest(String(data.ticket ?? '')),now());
       requireValue(party && proof && proof.party_id === party.id && proof.user_id !== user.id,403,'Could not verify this player.');
       requireValue(membership(proof.user_id)?.id === party.id,403,'This player left the party.');
       run('DELETE FROM tickets WHERE hash=?',proof.hash);
-      return { user:publicUser(one('SELECT * FROM users WHERE id=?',proof.user_id)), party_id:party.id, host_id:party.host };
+      return { user:{...publicUser(one('SELECT * FROM users WHERE id=?',proof.user_id)),equipped:inventory.publicGear(proof.user_id)}, party_id:party.id, host_id:party.host };
     }
     throw new ApiError(404,'This server does not support that feature.');
   }

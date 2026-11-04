@@ -4,7 +4,17 @@ For the existing DigitalOcean Droplet, see [DIGITALOCEAN.md](DIGITALOCEAN.md). I
 
 This branch adds unique account usernames, password sign-in, accepted friends, persistent parties and matchmaking for game version 1.2.0. The existing Python lobby list remains in the repository for older deployments. The new game requires `server.mjs`.
 
-The DigitalOcean base service and HTTPS address have been verified. Run `update-digitalocean.sh` from the Droplet's root console to deploy matchmaking: it tests the update, backs up SQLite, and restarts only baseball. See [the update instructions](DIGITALOCEAN.md#update-an-existing-installation-for-matchmaking). Uploading this branch alone does not update the Droplet.
+The DigitalOcean base service and HTTPS address have been verified. Run the newest `update-digitalocean.sh` from the Droplet's root console to deploy the account locker and matchmaking. It copies the new inventory module/catalog, tests the update, backs up SQLite, and restarts only baseball. See [the update instructions](DIGITALOCEAN.md#update-an-existing-installation-for-account-equipment-and-matchmaking). Earlier updater links do not copy the inventory module. Uploading this branch alone does not update the Droplet.
+
+## Account equipment
+
+Bats, helmets, equipped items, Club Cash and equipment quest progress are stored per account in SQLite. Signed-in clients load that locker on any computer. Purchases require authentication; the server checks daily UTC availability, its catalog price, balance and ownership transactionally. Duplicate purchases charge once. A party's public member profiles include only equipped gear and jersey number; private lockers and balances are never shared.
+
+There is a one-time transfer of existing known local gear and cash to the first account using that old save. The legacy save is claimed server-side so it cannot be copied into another account; already-initialized lockers override a new device's local files. This compatibility import trusts the old offline save within catalog/balance limits. It is not cryptographic evidence of old purchases.
+
+Future offline-mode rewards are reported by the game and retried from a durable outbox per account, with unique reward IDs preventing duplicate credits. Unsynchronized rewards remain pending on the device until it reconnects; committed purchases and loadouts are saved on the server. This HTTP service does not independently simulate offline gameplay. Career seasons and device preferences stay local.
+
+Parties support one player plus six friends. The game renders all seven characters on its real field, with names, their saved helmets and bats mounted on their backs. Members' equipped gear updates through the normal party refresh.
 
 ## Online flow
 

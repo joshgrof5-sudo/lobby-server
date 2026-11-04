@@ -4,5 +4,5 @@
   "version": "1.2.0",
   "type": "module",
   "engines": { "node": ">=24" },
-  "scripts": { "start": "node server.mjs", "test": "node --test server.test.mjs matchmaking.test.mjs" }
+  "scripts": { "start": "node server.mjs", "test": "node --test server.test.mjs matchmaking.test.mjs inventory.test.mjs" }
 }

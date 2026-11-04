@@ -1,0 +1,331 @@
+[
+  {
+    "event": "",
+    "goal": 0,
+    "id": "chrome",
+    "price": 1800,
+    "type": "bat"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "gold",
+    "price": 2200,
+    "type": "bat"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "neon",
+    "price": 2400,
+    "type": "bat"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "candy",
+    "price": 2800,
+    "type": "bat"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "flame",
+    "price": 3000,
+    "type": "bat"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "frost",
+    "price": 3400,
+    "type": "bat"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "space",
+    "price": 3800,
+    "type": "bat"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "toxic",
+    "price": 4200,
+    "type": "bat"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "rainbow",
+    "price": 6000,
+    "type": "bat"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "prism_drive",
+    "price": 350,
+    "type": "bat"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "blue_voltage",
+    "price": 650,
+    "type": "bat"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "carbon_pulse",
+    "price": 1100,
+    "type": "bat"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "solar_gold",
+    "price": 1500,
+    "type": "bat"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "toxic_circuit",
+    "price": 1900,
+    "type": "bat"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "violet_comet",
+    "price": 2800,
+    "type": "bat"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "helmet_classic",
+    "price": 0,
+    "type": "helmet"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "helmet_airmail_blue",
+    "price": 250,
+    "type": "helmet"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "helmet_cherry_bomb",
+    "price": 400,
+    "type": "helmet"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "helmet_pine_rider",
+    "price": 600,
+    "type": "helmet"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "helmet_sunset_sprint",
+    "price": 800,
+    "type": "helmet"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "helmet_checkmate",
+    "price": 1000,
+    "type": "helmet"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "helmet_saber_stripe",
+    "price": 1300,
+    "type": "helmet"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "helmet_polar_pop",
+    "price": 1500,
+    "type": "helmet"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "helmet_wild_camo",
+    "price": 1800,
+    "type": "helmet"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "helmet_starfield",
+    "price": 2100,
+    "type": "helmet"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "helmet_bolt_runner",
+    "price": 2400,
+    "type": "helmet"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "helmet_honeycomb",
+    "price": 2700,
+    "type": "helmet"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "helmet_stealth_ops",
+    "price": 3000,
+    "type": "helmet"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "helmet_aurora_arc",
+    "price": 3400,
+    "type": "helmet"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "helmet_comet_tail",
+    "price": 3800,
+    "type": "helmet"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "helmet_crown_jewel",
+    "price": 4200,
+    "type": "helmet"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "helmet_nebula",
+    "price": 3200,
+    "type": "helmet"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "helmet_dragon",
+    "price": 3600,
+    "type": "helmet"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "helmet_circuit",
+    "price": 4000,
+    "type": "helmet"
+  },
+  {
+    "event": "",
+    "goal": 0,
+    "id": "helmet_prism",
+    "price": 4800,
+    "type": "helmet"
+  },
+  {
+    "event": "practice_hits",
+    "goal": 40,
+    "id": "quest_bat_cage_rat",
+    "price": 0,
+    "type": "bat"
+  },
+  {
+    "event": "practice_hrs",
+    "goal": 20,
+    "id": "quest_bat_warning_track",
+    "price": 0,
+    "type": "bat"
+  },
+  {
+    "event": "quick_wins",
+    "goal": 8,
+    "id": "quest_bat_walkoff",
+    "price": 0,
+    "type": "bat"
+  },
+  {
+    "event": "season_games",
+    "goal": 25,
+    "id": "quest_bat_pennant_run",
+    "price": 0,
+    "type": "bat"
+  },
+  {
+    "event": "derby_hrs",
+    "goal": 75,
+    "id": "quest_bat_derby_ace",
+    "price": 0,
+    "type": "bat"
+  },
+  {
+    "event": "online_wins",
+    "goal": 10,
+    "id": "quest_bat_clubhouse",
+    "price": 0,
+    "type": "bat"
+  },
+  {
+    "event": "defense_outs",
+    "goal": 30,
+    "id": "quest_helmet_bullpen_ghost",
+    "price": 0,
+    "type": "helmet"
+  },
+  {
+    "event": "practice_hits",
+    "goal": 100,
+    "id": "quest_helmet_fastball_flash",
+    "price": 0,
+    "type": "helmet"
+  },
+  {
+    "event": "derby_hrs",
+    "goal": 200,
+    "id": "quest_helmet_longball_crown",
+    "price": 0,
+    "type": "helmet"
+  },
+  {
+    "event": "season_games",
+    "goal": 60,
+    "id": "quest_helmet_dugout_captain",
+    "price": 0,
+    "type": "helmet"
+  },
+  {
+    "event": "season_titles",
+    "goal": 3,
+    "id": "quest_helmet_champions_crest",
+    "price": 0,
+    "type": "helmet"
+  },
+  {
+    "event": "online_wins",
+    "goal": 30,
+    "id": "quest_helmet_rival_breaker",
+    "price": 0,
+    "type": "helmet"
+  }
+]
