@@ -34,4 +34,3 @@ Success prints `DEDICATED BASEBALL SERVER READY`. The live `/health` response mu
 Use the rebuilt `MajorLeaguePhysics.exe` on every player's computer. Old 1.2 clients cannot join 1.3.1 dedicated matches.
 
 Bot animation in 1.3.1 streams the authoritative full-body joint poses and equipment transforms to every client. Clients interpolate those poses instead of rebuilding the spring animation independently. Pose packets are split into small batches, and teleports snap rather than sliding across the field.
-
