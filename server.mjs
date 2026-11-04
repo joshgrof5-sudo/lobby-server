@@ -7,6 +7,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {createInventory} from './inventory.mjs';
+import {createDedicatedPool} from './dedicated.mjs';
 
 const scrypt = promisify(scryptCallback);
 const id = () => randomBytes(16).toString('hex');
@@ -18,7 +19,7 @@ class ApiError extends Error {
 }
 function requireValue(value, status, message) { if (!value) throw new ApiError(status, message); }
 
-export function createService({ database = ':memory:', clock = () => Date.now(), trustProxy = false, authLimit = 12, authConcurrency = 6 } = {}) {
+export function createService({ database = ':memory:', clock = () => Date.now(), trustProxy = false, authLimit = 12, authConcurrency = 6, dedicated = null } = {}) {
   if (!Number.isInteger(authConcurrency) || authConcurrency < 1 || authConcurrency > 6) throw new Error('AUTH_CONCURRENCY must be an integer from 1 to 6.');
   if (database !== ':memory:') mkdirSync(dirname(resolve(database)), { recursive: true });
   const db = new DatabaseSync(database);
@@ -37,6 +38,7 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
     CREATE TABLE IF NOT EXISTS match_tickets(hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),match_id TEXT NOT NULL REFERENCES matches(id) ON DELETE CASCADE,expires INTEGER NOT NULL);
   `);
   const inventory=createInventory(db,clock);
+  if(!db.prepare('PRAGMA table_info(matches)').all().some(column=>column.name==='dedicated'))db.exec('ALTER TABLE matches ADD COLUMN dedicated INTEGER NOT NULL DEFAULT 0');
   const run = (sql, ...args) => db.prepare(sql).run(...args);
   const one = (sql, ...args) => db.prepare(sql).get(...args);
   const all = (sql, ...args) => db.prepare(sql).all(...args);
@@ -48,10 +50,17 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
   const areFriends = (a,b) => a !== b && !!one('SELECT 1 FROM friends WHERE a=? AND b=?', ...pair(a,b));
   const membership = user => one('SELECT p.* FROM parties p JOIN members m ON p.id=m.party_id WHERE m.user_id=?', user);
   const userMatch = userId => one('SELECT g.* FROM matches g JOIN match_members m ON m.match_id=g.id WHERE m.user_id=?',userId);
+  const pool=dedicated?createDedicatedPool(dedicated,match=>run('DELETE FROM matches WHERE id=?',match),()=>`http://127.0.0.1:${server.address().port}`):null;
   const cancelGroup = party => {
     const entry=one('SELECT * FROM match_parties WHERE party_id=?',party.id);
     if(!entry)return;
     const game=one('SELECT * FROM matches WHERE id=?',entry.match_id);
+    if(game.dedicated && game.phase!=='searching'){
+      run('DELETE FROM match_members WHERE party_id=?',party.id);
+      run('DELETE FROM match_parties WHERE party_id=?',party.id);
+      // Keep the match's anchor party until the dedicated process finishes.
+      return;
+    }
     if(game.host_party===party.id)run('DELETE FROM matches WHERE id=?',game.id);
     else {
       run('DELETE FROM match_members WHERE party_id=?',party.id);
@@ -62,13 +71,20 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
   const advanceMatches = () => {
     for(const game of all("SELECT * FROM matches WHERE phase IN ('searching','connecting')")) {
       const count=one('SELECT COUNT(*) AS n FROM match_members WHERE match_id=?',game.id).n;
-      if(game.phase==='searching' && (now()>=game.deadline || count===14))run("UPDATE matches SET phase='connecting',deadline=? WHERE id=?",now()+15,game.id);
+      if(game.phase==='searching' && (now()>=game.deadline || count===14)){
+        if(game.dedicated && !pool.ensure(game))continue;
+        run("UPDATE matches SET phase='connecting',deadline=? WHERE id=?",now()+(game.dedicated?45:15),game.id);
+      }
       const current=one('SELECT * FROM matches WHERE id=?',game.id);
       if(current.phase!=='connecting')continue;
+      if(current.dedicated && !pool.workers.get(game.id)?.ready)continue;
       const missing=one('SELECT COUNT(*) AS n FROM match_members WHERE match_id=? AND ready=0',game.id).n;
       if(missing && now()<current.deadline)continue;
       if(missing) {
-        for(const group of all('SELECT DISTINCT p.* FROM parties p JOIN match_members m ON m.party_id=p.id WHERE m.match_id=? AND m.ready=0',game.id))cancelGroup(group);
+        for(const group of all('SELECT DISTINCT p.* FROM parties p JOIN match_members m ON m.party_id=p.id WHERE m.match_id=? AND m.ready=0',game.id)){
+          if(current.dedicated){run('DELETE FROM match_members WHERE party_id=?',group.id);if(group.id!==current.host_party)run('DELETE FROM match_parties WHERE party_id=?',group.id);}
+          else cancelGroup(group);
+        }
       }
       if(one('SELECT 1 FROM matches WHERE id=?',game.id))run("UPDATE matches SET phase='selecting',selection_deadline=? WHERE id=?",now()+30,game.id);
     }
@@ -95,16 +111,16 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
     run('DELETE FROM sessions WHERE expires<=?', now());
     run('DELETE FROM tickets WHERE expires<=?', now());
     run('DELETE FROM match_tickets WHERE expires<=?', now());
-    for(const party of all('SELECT DISTINCT p.* FROM parties p JOIN members m ON m.party_id=p.id JOIN users u ON u.id=m.user_id WHERE u.seen<?',now()-75))cancelGroup(party);
-    run('DELETE FROM parties WHERE host IN (SELECT id FROM users WHERE seen<?)', now()-75);
-    run('DELETE FROM members WHERE user_id IN (SELECT id FROM users WHERE seen<?)', now()-75);
+    for(const user of all('SELECT id FROM users WHERE seen<? AND id IN (SELECT user_id FROM members)',now()-75))leaveParty(user.id);
+    run('DELETE FROM parties WHERE NOT EXISTS(SELECT 1 FROM members WHERE party_id=parties.id) AND NOT EXISTS(SELECT 1 FROM matches WHERE host_party=parties.id)');
     advanceMatches();
+    if(pool)pool.sweep(new Set(all('SELECT id FROM matches WHERE dedicated=1').map(g=>g.id)));
   };
   const matchView = game => {
     if(!game)return null;
     const leader=one('SELECT u.id,u.username FROM users u JOIN parties p ON p.host=u.id WHERE p.id=?',game.host_party);
     const members=all('SELECT u.id,u.username,m.party_id,m.ready,p.team FROM match_members m JOIN users u ON u.id=m.user_id JOIN match_parties p ON p.party_id=m.party_id WHERE m.match_id=? ORDER BY u.username',game.id).map(member=>({...member,equipped:inventory.publicGear(member.id)}));
-    return {...game,host_id:leader.id,host_username:leader.username,members,max:14,bots:14-members.length,server_now:now(),remaining:Math.max(0,game.deadline-now()),selection_remaining:Math.max(0,game.selection_deadline-now())};
+    return {...game,dedicated:!!game.dedicated,host_id:game.dedicated?'dedicated':leader.id,host_username:game.dedicated?'Match server':leader.username,members,max:14,bots:14-members.length,server_now:now(),remaining:Math.max(0,game.deadline-now()),selection_remaining:Math.max(0,game.selection_deadline-now())};
   };
   const partyView = party => {
     if (!party) return null;
@@ -117,9 +133,14 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
   const leaveParty = userId => {
     const party = membership(userId);
     if (!party) return;
-    cancelGroup(party);
-    if (party.host === userId) run('DELETE FROM parties WHERE id=?', party.id);
-    else run('DELETE FROM members WHERE user_id=?', userId);
+    const game=userMatch(userId);
+    if(!game?.dedicated&&!one('SELECT 1 FROM matches WHERE host_party=? AND dedicated=1',party.id)){cancelGroup(party);if(party.host===userId)run('DELETE FROM parties WHERE id=?',party.id);else run('DELETE FROM members WHERE user_id=?',userId);return;}
+    if(game?.dedicated && game.phase!=='searching')run('DELETE FROM match_members WHERE user_id=?',userId);
+    else if(game)cancelGroup(party);
+    run('DELETE FROM members WHERE user_id=?', userId);
+    const next=one('SELECT user_id FROM members WHERE party_id=? ORDER BY user_id LIMIT 1',party.id);
+    if(party.host===userId&&next)run('UPDATE parties SET host=? WHERE id=?',next.user_id,party.id);
+    if(!next&&!one('SELECT 1 FROM matches WHERE host_party=? AND dedicated=1',party.id))run('DELETE FROM parties WHERE id=?',party.id);
   };
   const state = user => ({
     user: publicUser(user), inventory:inventory.view(user.id),party: partyView(membership(user.id)), match:matchView(userMatch(user.id)),
@@ -142,7 +163,26 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
   async function route(req) {
     const url = new URL(req.url, 'http://localhost'); const path = url.pathname; const method = req.method;
     cleanup();
-    if (method === 'GET' && (path === '/' || path === '/health')) return { service: 'mlp-social', version: 1, matchmaking:true, account_inventory:true };
+    if (method === 'GET' && (path === '/' || path === '/health')) return { service: 'mlp-social', version: 1, matchmaking:true, account_inventory:true,dedicated_matches:!!pool,game_version:'1.3.0' };
+    if(method==='POST'&&path==='/internal/match'){
+      const data=await body(req),worker=pool?.authenticate(String(data.match_id??''),req.headers['x-mlp-worker']);
+      requireValue(worker,403,'Invalid match worker.');
+      const game=one('SELECT * FROM matches WHERE id=? AND dedicated=1',data.match_id);
+      requireValue(game,404,'Match ended.');worker.seen=Date.now();
+      if(data.action==='listening'){
+        worker.ready=true;run('UPDATE matches SET ip=?,port=? WHERE id=?',dedicated.address,worker.port,game.id);
+      }else if(data.action==='verify'){
+        const proof=one('SELECT * FROM match_tickets WHERE hash=? AND match_id=? AND expires>?',digest(String(data.ticket??'')),game.id,now());
+        requireValue(proof&&userMatch(proof.user_id)?.id===game.id&&['connecting','searching'].includes(game.phase),403,'Player is not joining this match.');
+        run('DELETE FROM match_tickets WHERE hash=?',proof.hash);
+        return {user:{...publicUser(one('SELECT * FROM users WHERE id=?',proof.user_id)),equipped:inventory.publicGear(proof.user_id)},receipt:pool.issueReceipt(game.id,proof.user_id)};
+      }else if(data.action==='start'){
+        requireValue(game.phase==='selecting',409,'Match is not selecting.');run("UPDATE matches SET phase='playing' WHERE id=?",game.id);
+      }else if(data.action==='finish'){
+        run('DELETE FROM matches WHERE id=?',game.id);return {finished:true};
+      }else requireValue(data.action==='state',400,'Unknown worker action.');
+      return {match:matchView(one('SELECT * FROM matches WHERE id=?',game.id))};
+    }
     if (method === 'GET' && path === '/lobbies') {
       return all('SELECT * FROM parties WHERE public=1 AND started=0 AND version=?', url.searchParams.get('v') || '1.1.0').map(p => ({ ...partyView(p), name: one('SELECT username FROM users WHERE id=?',p.host).username, players: one('SELECT COUNT(*) AS n FROM members WHERE party_id=?',p.id).n }));
     }
@@ -180,6 +220,10 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
       } finally { activeAuth--; }
     }
     const user = authenticated(req);
+    if(method==='POST'&&path==='/v1/dedicated/verify-server'){
+      const data=await body(req),game=userMatch(user.id);
+      requireValue(game?.dedicated&&pool.consumeReceipt(String(data.receipt??''),game.id,user.id),403,'Could not verify the match server.');return {verified:true,match_id:game.id};
+    }
     if (method === 'POST' && path === '/v1/auth/logout') {
       leaveParty(user.id); run('DELETE FROM sessions WHERE hash=?',digest(req.headers.authorization.slice(7))); return { ok:true };
     }
@@ -199,10 +243,12 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
       const existing=userMatch(user.id);
       if(existing)return state(user);
       const members=all('SELECT u.* FROM users u JOIN members m ON m.user_id=u.id WHERE m.party_id=?',party.id);
+      requireValue(!members.some(member=>userMatch(member.id)),409,'Your party is still in a match. Wait for them or leave the party.');
       requireValue(members.length<=7,409,'Online parties support up to 7 players.');
       requireValue(members.every(member=>member.seen>=now()-30),409,'Wait for everyone in your party to reconnect.');
       const version=String(data.version ?? '1.2.0');
       requireValue(version===party.version,409,'Everyone needs the same game update.');
+      if(pool)requireValue(version==='1.3.0',409,'Install the dedicated-server game update before finding a match.');
       transaction(()=>{
         let game,team;
         for(const candidate of all("SELECT * FROM matches WHERE phase='searching' AND deadline>? AND version=? ORDER BY created,id",now()+5,version)) {
@@ -215,6 +261,7 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
         if(!game) {
           game={id:id()};team='Red';
           run("INSERT INTO matches(id,host_party,phase,created,deadline,version) VALUES(?,?,'searching',?,?,?)",game.id,party.id,now(),now()+60,version);
+          if(pool)run('UPDATE matches SET dedicated=1 WHERE id=?',game.id);
         }
         run('INSERT INTO match_parties VALUES(?,?,?)',party.id,game.id,team);
         for(const member of members)run('INSERT INTO match_members(user_id,match_id,party_id) VALUES(?,?,?)',member.id,game.id,party.id);
@@ -225,10 +272,12 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
       const party=membership(user.id);requireValue(party,409,'Your party is no longer available.');
       requireValue(path.endsWith('/fail') || party.host===user.id,403,'Only your party leader can cancel matchmaking.');
       const game=userMatch(user.id);requireValue(path.endsWith('/fail') || !game || game.phase!=='playing',409,'Leave the match before finding another one.');
+      if(game?.dedicated&&game.phase==='playing'){run('DELETE FROM match_members WHERE user_id=?',user.id);return state(user);}
       cancelGroup(party);return state(user);
     }
     if(method==='POST' && path==='/v1/matchmaking/route') {
       const game=userMatch(user.id),party=membership(user.id);
+      requireValue(!game?.dedicated,403,'The dedicated match server publishes its own route.');
       requireValue(game && party && game.host_party===party.id && party.host===user.id,403,'Only the match host can publish this route.');
       requireValue(Number.isInteger(data.port)&&data.port>=1024&&data.port<=65535,400,'Invalid game port.');
       const lan=String(data.lan_ip ?? '');requireValue(!lan||isIP(lan),400,'Invalid local address.');
@@ -240,6 +289,7 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
     }
     if(method==='POST' && path==='/v1/matchmaking/start') {
       const game=userMatch(user.id),party=membership(user.id);
+      requireValue(!game?.dedicated,403,'The dedicated match server starts the game.');
       requireValue(game && party && game.host_party===party.id && party.host===user.id,403,'Only the match host can start this match.');
       requireValue(game.phase==='selecting',409,'Wait for position selection.');
       run("UPDATE matches SET phase='playing' WHERE id=?",game.id);return state(user);
@@ -348,11 +398,12 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
     catch(error) { const status = error.status ?? 500; if(status===500) console.error('Request failed:',error.message); res.writeHead(status,headers).end(JSON.stringify({ error: status===500 ? 'The server could not complete this request. Try again.':error.message })); }
   });
   server.requestTimeout = 15000; server.headersTimeout = 10000;
-  return { server, db, close: async () => { await new Promise(resolve => server.close(resolve)); db.close(); } };
+  const maintenance=pool?setInterval(cleanup,1000):null;maintenance?.unref();
+  return { server, db, pool, close: async () => { if(maintenance)clearInterval(maintenance);pool?.close();await new Promise(resolve => server.close(resolve));db.close(); } };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const service = createService({ database:process.env.DATABASE_PATH || './data/social.sqlite', trustProxy:process.env.TRUST_PROXY === '1', authConcurrency:Number(process.env.AUTH_CONCURRENCY || 6) });
+  const service = createService({ database:process.env.DATABASE_PATH || './data/social.sqlite', trustProxy:process.env.TRUST_PROXY === '1', authConcurrency:Number(process.env.AUTH_CONCURRENCY || 6),dedicated:process.env.MLP_GAME_BINARY?{executable:process.env.MLP_GAME_BINARY,pack:process.env.MLP_GAME_PACK,address:process.env.MLP_GAME_ADDRESS,firstPort:Number(process.env.MLP_GAME_PORT||7002),capacity:Number(process.env.MLP_MATCH_CAPACITY||1)}:null });
   service.server.listen(Number(process.env.PORT || 8080),process.env.HOST || '0.0.0.0',() => console.log('MLP social service listening'));
   for (const signal of ['SIGTERM','SIGINT']) process.on(signal,async()=>{await service.close();process.exit(0);});
 }

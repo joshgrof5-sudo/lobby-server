@@ -1,63 +1,60 @@
-# Major League Physics lobby server
+# Online accounts, friends and parties
 
-For the existing DigitalOcean Droplet, see [DIGITALOCEAN.md](DIGITALOCEAN.md). It describes an isolated deployment alongside the other game, with separate account storage and a dedicated HTTPS hostname.
+For a shared DigitalOcean Droplet, see [DIGITALOCEAN.md](DIGITALOCEAN.md). Inspect the existing game's services before using the separate Compose deployment.
 
-This branch adds unique account usernames, password sign-in, accepted friends, persistent parties and matchmaking for game version 1.2.0. The existing Python lobby list remains in the repository for older deployments. The new game requires `server.mjs`.
+Version 1.3 uses dedicated Godot match processes. Install `install-dedicated-digitalocean.sh` before enabling the new Online client. The account-only updater does not install a game runtime. See [the server explanation](SERVER_SETUP.md) for the connection flow, limits and deployment steps.
 
-The DigitalOcean base service and HTTPS address have been verified. Run the newest `update-digitalocean.sh` from the Droplet's root console to deploy the account locker and matchmaking. It copies the new inventory module/catalog, tests the update, backs up SQLite, and restarts only baseball. See [the update instructions](DIGITALOCEAN.md#update-an-existing-installation-for-account-equipment-and-matchmaking). Earlier updater links do not copy the inventory module. Uploading this branch alone does not update the Droplet.
+The DigitalOcean account service is deployed at `https://mlp-174-138-88-57.sslip.io`. Live game checks confirm matchmaking and account inventory capabilities and authenticated account endpoints. The updater preserves the database and restarts only `mlp-social`.
 
-## Account equipment
+On Windows, a TLS handshake failure can fall back to Windows' native HTTPS verifier. This supports antivirus scanning certificates already trusted by that computer; it does not disable certificate validation or install certificates. Request credentials pass through stdin rather than command arguments. `tools/check_live_server.gd` checks the deployed API without creating accounts or matches.
 
-Bats, helmets, equipped items, Club Cash and equipment quest progress are stored per account in SQLite. Signed-in clients load that locker on any computer. Purchases require authentication; the server checks daily UTC availability, its catalog price, balance and ownership transactionally. Duplicate purchases charge once. A party's public member profiles include only equipped gear and jersey number; private lockers and balances are never shared.
+Signed-in accounts own their locker, Club Cash, quest progress and equipped bat/helmet in SQLite. Device preferences remain local. Purchases require sign-in and a successful server response; the server checks UTC offers, its catalog prices, balance and ownership in a transaction. A fresh device loads the account's saved locker. Party profiles expose only equipped gear, not anyone else's inventory or balance.
 
-There is a one-time transfer of existing known local gear and cash to the first account using that old save. The legacy save is claimed server-side so it cannot be copied into another account; already-initialized lockers override a new device's local files. This compatibility import trusts the old offline save within catalog/balance limits. It is not cryptographic evidence of old purchases.
+The first account using an old local save can transfer its existing known gear and Club Cash once. A server-side legacy-save claim prevents copying that save into another account; local transfer ownership also prevents a second account inheriting the first account's old device files. Already-initialized account lockers always take precedence over another computer's local files. This is a compatibility import of the old offline economy, not cryptographic proof of past earnings.
 
-Future offline-mode rewards are reported by the game and retried from a durable outbox per account, with unique reward IDs preventing duplicate credits. Unsynchronized rewards remain pending on the device until it reconnects; committed purchases and loadouts are saved on the server. This HTTP service does not independently simulate offline gameplay. Career seasons and device preferences stay local.
+Future game-earned cash and quest progress are queued in a separate durable outbox per account and synchronized with idempotent reward IDs. The existing offline modes report these rewards; this service does not independently simulate their gameplay. Committed purchases and equipped items live on the server. Unsynchronized offline rewards remain pending on the device until it reconnects. Career seasons and video/control settings remain device-local.
 
-Parties support one player plus six friends. The game renders all seven characters on its real field, with names, their saved helmets and bats mounted on their backs. Members' equipped gear updates through the normal party refresh.
+## Run and test
 
-## Online flow
-
-Create a party or play alone, then choose **Find match**. Parties of up to seven stay on the same team. Matchmaking gathers up to 14 humans for 60 seconds (or starts early when full), gives connections a short grace period, and fills remaining positions with the game's bots. Players have 30 seconds to choose positions; unpicked positions are assigned automatically. Matches start automatically, and original parties remain together afterward. The UI has no public lobby browser or manual host/start controls.
-
-## Friend requests
-
-Requests are private to their sender and recipient. The recipient can accept or decline; the sender can cancel a pending request. Accepting adds the friendship to both accounts. Removing a friend clears the relationship and outstanding party invitations on both accounts. Requests and accepted friendships are saved in SQLite and survive server restarts. Only the owning account can act on a request.
-
-The game updates friends every second while the panel is open, or within three seconds elsewhere. The Friends button counts pending requests and party invitations. Lists distinguish received requests, sent requests and accepted friends; statuses show Online, Offline, In a party, Finding a match or Playing. `npm test` covers these permissions and state changes. The game workspace also has a two-client UI test for automatic receipt, acceptance, party invitation/joining, removal and account switching.
-
-## Update the existing Render service
-
-Do not merge this branch into an automatically deployed Python service until its runtime and storage are configured. Deploy this branch directly while updating the runtime, or merge it and update the service configuration together.
-
-1. Open **lobby-server-75iv** in the Render Dashboard. Under **Settings > Build > Source > Edit**, select this repository, the updated branch, and the **Node** runtime. Use build command `npm install` and start command `npm start`. Node 24 is selected by `.node-version`.
-2. Attach a persistent disk mounted at `/var/data`. **Render requires a paid service for persistent disks.** Do not launch real accounts with an ephemeral database: usernames, passwords and friendships would be lost on redeploy. Review Render's pricing before purchasing anything.
-3. Set environment variables `DATABASE_PATH=/var/data/social.sqlite` and `TRUST_PROXY=1`. Render provides `PORT`. Set the health check path to `/health`.
-4. Deploy. Verify that `https://lobby-server-75iv.onrender.com/health` returns `{"service":"mlp-social","version":1}`. Keep one service instance using this disk. The existing game server URL can stay the same.
-5. Test account creation, sign-in after restart, accepted friend requests, an invite, and two game clients joining the same party before releasing the game update.
-
-Reference: [changing Render runtimes](https://render.com/docs/native-runtimes#changing-a-services-runtime), [persistent disks](https://render.com/docs/disks).
-
-This branch has not been deployed just by adding these files. The old `python lobby_server.py` command continues running the old lobby list until Render's runtime/start command are changed. The Dockerfile is an alternative to the native Node runtime.
-
-## Run locally
-
-Node 24 or newer; no third-party dependencies:
+Use Node 24 or newer. There are no third-party dependencies.
 
 ```sh
+cd server
 npm test
 npm start
 ```
 
-Default port: 8080. Default database: `./data/social.sqlite`. For local game testing, set `MLP_SOCIAL_URL=http://127.0.0.1:8080` in the Godot process environment. Remote services require HTTPS.
+The API listens on port 8080 by default. `GET /health` returns `mlp-social`.
 
-## Account and multiplayer behavior
+`node --test --test-concurrency=1 server.test.mjs matchmaking.test.mjs inventory.test.mjs dedicated.test.mjs dedicated-integration.test.mjs godot-integration.test.mjs friends-integration.test.mjs inventory-integration.test.mjs` also checks a real dedicated game with authenticated clients, leader departure, friend UIs, purchases and fresh-profile reloads. It renders seven party characters with separate gear. Set `GODOT_BIN` to your Godot 4.6 executable before running integration checks. Set `MLP_TEST_GAME_PACK` to test the exported server pack. Checks use temporary local ports and disposable profiles.
 
-- Usernames are permanent, case-insensitive, 3–20 letters/digits/underscores, and start with a letter. A unique database constraint resolves simultaneous signups.
-- Passwords use salted scrypt hashes; session tokens and connection tickets are stored as hashes. The game saves its session token, never its password. There is no password recovery flow yet.
-- Friends must accept requests. Invites go to accepted friends. Joining by party code requires sign-in. Parties support 7 players for Online and 8 for legacy Derby. Matchmaking combines whole parties into matches with up to 14 humans.
-- The ENet handshake checks one-use account tickets. Player-supplied display names cannot impersonate another account.
-- Presence expires after 75 seconds. Friendships and account ownership survive restarts. Back up SQLite with its backup tools.
-- Match hosts publish routes using authenticated matchmaking endpoints. Single-use match tickets verify players from different parties. Legacy private-party and lobby-list endpoints remain for older clients; the new UI uses matchmaking.
 
-Game traffic still uses the game's ENet/UDP transport. The service provides account identity and party discovery, not a relay. Hosts need a reachable UDP port through UPnP, forwarding, or a reachable LAN.
+Friends refresh automatically every second while their panel is open, or within three seconds elsewhere. The Friends button counts pending requests and invitations. Incoming requests have Accept/Decline controls; sent requests can be cancelled. Friendships are mutual, requests survive server restarts, and switching accounts clears cached lists. Requests are private to the sender and recipient. The server rejects another account accepting, declining or cancelling someone else's request.
+
+For local Godot testing, set `MLP_SOCIAL_URL=http://127.0.0.1:8080`. The game's `online/social_server_url` now points to `https://mlp-174-138-88-57.sslip.io`. The Render constant is only a fallback when that setting is absent.
+
+## Hosting
+
+Deploy `server/` as a Node service or use the Dockerfile. Set:
+
+- `PORT`: the host's assigned HTTP port.
+- `DATABASE_PATH`: a SQLite file **on a persistent disk**, for example `/data/social.sqlite`.
+- `TRUST_PROXY=1` only behind the hosting provider's trusted reverse proxy, where `X-Forwarded-For` contains the real player address.
+
+Run **one service instance** against that disk. Usernames and friend relationships must survive restarts. Do not put the database on ephemeral storage, and do not deploy independent SQLite instances behind a load balancer. Back up the database using SQLite's backup tools.
+
+Online has no lobby browser or manual host/start controls. A party leader queues the complete party. The server assigns whole parties to Red/Blue (7 positions per team), searches for 60 seconds, and starts early if all 14 human slots fill. A short connection grace removes incomplete parties together. Connected players then get 30 seconds to pick unique positions, with automatic assignment for players who do not pick. The game starts automatically and uses its existing bots in empty positions. Original parties survive cancellation and returning from the match.
+
+Parties remain on the account service without opening ENet. A match opens a single host connection and uses match-scoped one-use tickets, so different parties can play together while keeping their account identities. The old `/lobbies` and private-party ticket endpoints remain for older clients; the new UI does not browse them.
+
+Online game transport is ENet/UDP to a dedicated Godot process. The party leader does not host a match. Clients never publish the dedicated route or start the game; only the authenticated worker can do that. Home-router port forwarding is unnecessary. Allow the dedicated UDP port on the Droplet. Legacy peer-hosted API routes remain only for older/manual clients and tests; the new matchmaking client does not use them.
+
+## Identity rules
+
+- Usernames are permanent, case-insensitive, 3–20 ASCII letters/digits/underscores, starting with a letter. A unique database constraint enforces ownership, including concurrent signups.
+- Passwords use salted scrypt hashes. Only hashed session tokens and short-lived connection tickets are stored server-side. Passwords are never saved by the game.
+- Online host and client identities are checked through single-use server tickets during ENet authentication. Display names and RPC-supplied names cannot claim an account's username.
+- Friend requests require acceptance. Party invitations can be sent only to accepted friends. Joining by party code requires a signed-in account. Only the party leader can publish routes or start an existing hosted game.
+- Parties support 7 players for Online or 8 for legacy Derby. Online matches support 14 humans plus bot-filled positions. Offline users expire from parties after 75 seconds without presence updates; accepted friendships remain saved.
+
+There is no password recovery UI in this version. Keep the password you choose; adding a recovery provider requires a separate email/account service.

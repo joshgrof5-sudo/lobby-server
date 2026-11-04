@@ -1,12 +1,18 @@
 # Share the existing DigitalOcean Droplet
 
-Target: `174.138.88.57`. No remote changes have been made by adding these files.
+Target: `174.138.88.57`. The account service and HTTPS proxy are installed separately from the existing game.
+
+## Dedicated matches in 1.3
+
+Use `install-dedicated-digitalocean.sh` for the next deployment. The tested archive contains a stripped Godot game pack, Linux runtime and backend modules. The installer verifies its pinned checksum, tests the pack and backend, backs up accounts, and restarts only `mlp-social`. It installs one dedicated match slot on UDP 7002 and a resource-limited systemd drop-in. The other game keeps UDP 7777. An attached DigitalOcean cloud firewall also needs inbound UDP 7002.
+
+The new Online client requires `dedicated_matches:true` and never creates a player-hosted match. See [SERVER_SETUP.md](SERVER_SETUP.md) for the full explanation. This dedicated deployment is separate from the already-live account/matchmaking update below.
 
 ## Update an existing installation for account equipment and matchmaking
 
-The base account service is installed, and `https://mlp-174-138-88-57.sslip.io/health` has been checked externally. Run the newest `update-digitalocean.sh` as root to add matchmaking and the account locker. It stages the updated source including `inventory.mjs` and `equipment_catalog.json`, runs account/matchmaking/inventory tests sequentially with reduced CPU priority, takes a consistent SQLite online backup under `/var/lib/mlp-social/backups`, and restarts only `mlp-social`. If the new health check fails, it restores previous server modules and keeps the database. It does not restart HTTPS, the other game, or change firewall rules. Success includes `"matchmaking":true` and `"account_inventory":true`. Old updater links do not copy the new inventory module; use this version.
+The account-locker and matchmaking update has been deployed. Live Godot HTTPS checks confirm `"matchmaking":true` and `"account_inventory":true`, and protected endpoints reject unauthenticated requests. For future updates, the newest `update-digitalocean.sh` stages the source including `inventory.mjs` and `equipment_catalog.json`, runs backend tests sequentially with reduced CPU priority, takes a consistent SQLite backup under `/var/lib/mlp-social/backups`, and restarts only `mlp-social`. If health checks fail, it restores previous server modules and keeps the database. It does not restart HTTPS, the other game, or change firewall rules.
 
-The game uses protocol 1.2.0 for match tickets, searches for one minute, keeps parties on the same team, and automatically starts after position selection. The game project now uses the verified DigitalOcean HTTPS address. Actual match traffic still uses ENet between players; the Droplet provides the account/matchmaking API rather than a UDP relay.
+The previous 1.2 deployment provides accounts and player-hosted matchmaking. The 1.3 build changes match traffic to a dedicated Godot process, while keeping the same account database and HTTPS address.
 
 ## Native setup for this Droplet (no Docker required)
 
