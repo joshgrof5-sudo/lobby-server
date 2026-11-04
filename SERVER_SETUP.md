@@ -1,4 +1,4 @@
-# How Online works in 1.3
+# How Online works in 1.3.1
 
 The account service is already live. The dedicated-match build must be installed on the Droplet before the new Online client can find a match. The new client never falls back to running a match on a player's PC.
 
@@ -29,6 +29,9 @@ The account HTTPS proxy remains on TCP 80/443. Baseball matches use **UDP 7002**
 
 Use `server/install-dedicated-digitalocean.sh` from the published, pinned backend commit. It downloads the pinned archive, verifies SHA-256, runs backend tests, loads the actual headless field in a self-test, backs up SQLite, and adds the dedicated-game environment through a systemd drop-in. It restarts only `mlp-social`. It leaves HTTPS and the other game's service running. Failed health checks restore the previous baseball code/configuration and keep account data.
 
-Success prints `DEDICATED BASEBALL SERVER READY`. The live `/health` response must then contain `"dedicated_matches":true` and `"game_version":"1.3.0"`. A match worker opens UDP 7002 when a match is allocated; that port is normally idle between matches.
+Success prints `DEDICATED BASEBALL SERVER READY`. The live `/health` response must then contain `"dedicated_matches":true` and `"game_version":"1.3.1"`. A match worker opens UDP 7002 when a match is allocated; that port is normally idle between matches.
 
-Use the rebuilt `MajorLeaguePhysics.exe` on every player's computer. Old 1.2 clients cannot join 1.3 dedicated matches.
+Use the rebuilt `MajorLeaguePhysics.exe` on every player's computer. Old 1.2 clients cannot join 1.3.1 dedicated matches.
+
+Bot animation in 1.3.1 streams the authoritative full-body joint poses and equipment transforms to every client. Clients interpolate those poses instead of rebuilding the spring animation independently. Pose packets are split into small batches, and teleports snap rather than sliding across the field.
+
