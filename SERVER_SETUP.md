@@ -1,3 +1,9 @@
+# 1.4.8: grass behind the wall and home-run replays
+
+The rebuilt Windows client and `deployment/mlp-dedicated-1.4.8-linux-x86_64.tar.gz` must be installed together. Install the matching server release using its pinned installer. Deployment to the hosted server is manual.
+
+Grass now covers the ground immediately outside the stadium wall, while the existing service roads and curbs stay paved. The solid city-floor collision remains in place. Home-run and walk-off celebrations have been removed, and home runs use the existing highlight replay system again in every mode. Rookie mode and the tutorial remain available.
+
 # How Online works in 1.4.6
 
 The account service is already live. The dedicated-match build must be installed on the Droplet before the new Online client can find a match. The new client never falls back to running a match on a player's PC.
