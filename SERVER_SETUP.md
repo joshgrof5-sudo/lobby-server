@@ -1,14 +1,12 @@
-# 1.5.1: recessed dugouts, bench sitting and defensive throw recovery
+# 1.5.3: visible returns after runs and every out
 
-Install the rebuilt Windows client and `deployment/mlp-dedicated-1.5.1-linux-x86_64.tar.gz` together. Deploy the matching dedicated match worker using the pinned installer; hosting deployment remains manual.
+Install the rebuilt Windows client and `deployment/mlp-dedicated-1.5.3-linux-x86_64.tar.gz` together. The match worker owns return-walk authorization and the new dugout routing. Hosting deployment remains manual using the pinned installer.
 
-Dugouts are recessed four units below the field, behind openings carved through the foul walls. Rectangular subtraction removes the same volumes from the original terrain and wall colliders and their visible materials. Retaining faces, stair treads with continuous walkable slope collision, padded rails, wooden benches, cubbies, equipment racks and interior lights complete the rooms. The original wall above each opening and the outfield fences remain solid. Interior-aware camera checks recognize the floor beneath the ceiling.
+Human and bot scorers, strikeout victims, caught batters, tagged/forced runners and stranded runners at an inning change stay visible and walk into their own dugout. Retired runners leave the active baserunning list immediately, so their return cannot score or create another out. Home-run runners finish the bases before cleanup starts the dugout walk. A home-run batter missing its runner record is registered once so its full trip is preserved. Completed at-bats no longer restore the old batting stance or hide the retiring body.
 
-Press F near an available bench spot to approach and sit; press F again to stand. Seat ownership, range, team, role and obstruction are checked by the server. Seated characters have bent legs, a supported upper-body collider and resting hands. Seat reservations and normal collision are restored on standing, disconnect, knockdown or being called up. A role change keeps the game-assigned destination instead of returning the player to the bench.
+The return route uses the team's side of the field, separate approach lanes, the actual stairs and the dugout interior. Explicit server authorization lets a returning athlete enter only their own dugout during a live play. Waiting players retain the normal closed-gate rules. Waiting NPCs clear the entry lanes, and blocked walkers can sidestep and re-route without teleporting. Roles switch to waiting only once the athlete is inside. The next role assignment waits for current return walks; extra-inning ghost-runner reuse happens afterward.
 
-Defenders re-evaluate a throw already in its windup after runners become safe, redirecting stale throws to the pitcher. A receiver blocked from reaching a bag gets a throw to his current glove after a bounded wait; turn/plant and windup still play normally. Completed non-live fielding exchanges also return the ball to the pitcher instead of discarding it.
-
-Teammate collision, pass-through opponents, H to hug nearby teammates, the simple lobby-style equipment UI, compact outfield parking, rookie mode, tutorial and replay-camera recovery remain included. Home-run celebrations remain removed.
+The simple recessed dugout design, sitting, relaxed NPC behavior, closer hugs, persistent waiting positions, team/role access rules, defensive throw recovery and all prior camera fixes remain included. The stair ceiling now leaves headroom at the entrance. Building detail was already repaired externally and is intentionally unchanged in this update.
 
 # How Online works in 1.4.6
 
