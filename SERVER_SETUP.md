@@ -1,12 +1,14 @@
-# 1.5.0: dugouts, teammate hugs and simpler equipment menus
+# 1.5.1: recessed dugouts, bench sitting and defensive throw recovery
 
-Install the rebuilt Windows client and `deployment/mlp-dedicated-1.5.0-linux-x86_64.tar.gz` together. The dedicated match worker now owns the new hug RPCs and dugout placements. Hosting deployment remains manual using the pinned installer.
+Install the rebuilt Windows client and `deployment/mlp-dedicated-1.5.1-linux-x86_64.tar.gz` together. Deploy the matching dedicated match worker using the pinned installer; hosting deployment remains manual.
 
-Waiting hitters now occupy two open-front dugouts in foul territory. Human teammates can walk around there while their team bats, then automatically return to batting, running or fielding when assigned. Bots occupy only vacant waiting lineup slots; current hitters and base runners stay in play. Each shelter has a bench, roof, rails, bat rack and cooler, with identical collision on clients and server.
+Dugouts are recessed four units below the field, behind openings carved through the foul walls. Rectangular subtraction removes the same volumes from the original terrain and wall colliders and their visible materials. Retaining faces, stair treads with continuous walkable slope collision, padded rails, wooden benches, cubbies, equipment racks and interior lights complete the rooms. The original wall above each opening and the outfield fences remain solid. Interior-aware camera checks recognize the floor beneath the ceiling.
 
-Press H near an available teammate (within 7 units) to walk over and hug. The server validates team, range, world obstruction, role, possession and participant availability. Both players retain solid collision, the owners move through normal swept movement, and reliable server completion releases the pair. Being called up, changing teams, replay transitions, physical knockdowns or losing a participant cancels the interaction.
+Press F near an available bench spot to approach and sit; press F again to stand. Seat ownership, range, team, role and obstruction are checked by the server. Seated characters have bent legs, a supported upper-body collider and resting hands. Seat reservations and normal collision are restored on standing, disconnect, knockdown or being called up. A role change keeps the game-assigned destination instead of returning the player to the bench.
 
-Teammate collision masks are restored and stale pair exclusions are removed, except for active grab pairs. Opponents remain pass-through. Equipment menus share the main lobby fonts, dark panels and simple controls; paper decorations and the promotional banner are removed. Parking is limited to a 44-unit strip outside the outfield walls, with city scenery beyond it. Walking-camera and replay-origin recovery fixes remain included. Home-run celebrations remain removed; replays, rookie mode and the tutorial remain available.
+Defenders re-evaluate a throw already in its windup after runners become safe, redirecting stale throws to the pitcher. A receiver blocked from reaching a bag gets a throw to his current glove after a bounded wait; turn/plant and windup still play normally. Completed non-live fielding exchanges also return the ball to the pitcher instead of discarding it.
+
+Teammate collision, pass-through opponents, H to hug nearby teammates, the simple lobby-style equipment UI, compact outfield parking, rookie mode, tutorial and replay-camera recovery remain included. Home-run celebrations remain removed.
 
 # How Online works in 1.4.6
 
