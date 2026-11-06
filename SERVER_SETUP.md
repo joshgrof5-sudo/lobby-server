@@ -1,14 +1,12 @@
-# 1.4.9: teammate collision and baseball clubhouse UI
+# 1.5.0: dugouts, teammate hugs and simpler equipment menus
 
-The rebuilt Windows client and `deployment/mlp-dedicated-1.4.9-linux-x86_64.tar.gz` must be installed together. Install the matching server release using its pinned installer. Deployment to the hosted server is manual.
+Install the rebuilt Windows client and `deployment/mlp-dedicated-1.5.0-linux-x86_64.tar.gz` together. The dedicated match worker now owns the new hug RPCs and dugout placements. Hosting deployment remains manual using the pinned installer.
 
-Teammates now collide, including fielding bots and physical tumble bodies. Opponents remain pass-through, including their tumble bodies. Team changes refresh these exceptions, while grabs retain their temporary holder/target exclusion. Punching, dragging and throwing remain teammate interactions. The shop and locker use parchment cards, brick-red accents and the actual ballpark as their backdrop.
+Waiting hitters now occupy two open-front dugouts in foul territory. Human teammates can walk around there while their team bats, then automatically return to batting, running or fielding when assigned. Bots occupy only vacant waiting lineup slots; current hitters and base runners stay in play. Each shelter has a bench, roof, rails, bat rack and cooler, with identical collision on clients and server.
 
-The walking camera watchdog recognizes the controller's actual camera by identity, including sibling cameras with generated names, so normal walking no longer triggers repeated camera recovery. Replay recovery and its safe field fallback remain active.
+Press H near an available teammate (within 7 units) to walk over and hug. The server validates team, range, world obstruction, role, possession and participant availability. Both players retain solid collision, the owners move through normal swept movement, and reliable server completion releases the pair. Being called up, changing teams, replay transitions, physical knockdowns or losing a participant cancels the interaction.
 
-The current Windows client replaces the exterior grass with a continuous parking lot across the stadium block, extending to the surrounding streets. Marked bays, driving aisles and parked cars fill the irregular spaces around the fence and existing buildings. This scenery update is client-only and remains compatible with the published 1.4.8 server. The solid city-floor collision remains in place. Home-run and walk-off celebrations have been removed, and home runs use the existing highlight replay system again in every mode. Rookie mode and the tutorial remain available.
-
-The current client also repairs replay-to-gameplay camera transitions: benched bodies no longer move the spectator camera underground, camera restoration snaps to a fresh valid pose, and a safe field view covers missing or deleted cameras. The watchdog validates the camera position as well as its owner. Practice/Season scene wrappers resolve replay state from the actual tracker. This camera fix uses the existing 1.4.8 protocol and does not require a server update.
+Teammate collision masks are restored and stale pair exclusions are removed, except for active grab pairs. Opponents remain pass-through. Equipment menus share the main lobby fonts, dark panels and simple controls; paper decorations and the promotional banner are removed. Parking is limited to a 44-unit strip outside the outfield walls, with city scenery beyond it. Walking-camera and replay-origin recovery fixes remain included. Home-run celebrations remain removed; replays, rookie mode and the tutorial remain available.
 
 # How Online works in 1.4.6
 
