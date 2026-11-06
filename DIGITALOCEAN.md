@@ -2,7 +2,7 @@
 
 Target: `174.138.88.57`. The account service and HTTPS proxy are installed separately from the existing game.
 
-## Dedicated matches in 1.4.8
+## Dedicated matches in 1.4.9
 
 Use `install-dedicated-digitalocean.sh` for the next deployment. The tested archive contains a stripped Godot game pack, Linux runtime and backend modules. The installer verifies its pinned checksum, tests the pack and backend, backs up accounts, and restarts only `mlp-social`. It installs one dedicated match slot on UDP 7002 and a resource-limited systemd drop-in. The other game keeps UDP 7777. An attached DigitalOcean cloud firewall also needs inbound UDP 7002.
 
@@ -12,7 +12,7 @@ The new Online client requires `dedicated_matches:true` and never creates a play
 
 The account-locker and matchmaking update has been deployed. Live Godot HTTPS checks confirm `"matchmaking":true` and `"account_inventory":true`, and protected endpoints reject unauthenticated requests. For future updates, the newest `update-digitalocean.sh` stages the source including `inventory.mjs` and `equipment_catalog.json`, runs backend tests sequentially with reduced CPU priority, takes a consistent SQLite backup under `/var/lib/mlp-social/backups`, and restarts only `mlp-social`. If health checks fail, it restores previous server modules and keeps the database. It does not restart HTTPS, the other game, or change firewall rules.
 
-The previous 1.2 deployment provides accounts and player-hosted matchmaking. The 1.4.8 build changes match traffic to a dedicated Godot process, while keeping the same account database and HTTPS address.
+The previous 1.2 deployment provides accounts and player-hosted matchmaking. The 1.4.9 build changes match traffic to a dedicated Godot process, while keeping the same account database and HTTPS address.
 
 ## Native setup for this Droplet (no Docker required)
 

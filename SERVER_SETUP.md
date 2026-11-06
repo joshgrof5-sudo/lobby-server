@@ -1,8 +1,14 @@
-# 1.4.8: grass behind the wall and home-run replays
+# 1.4.9: teammate collision and baseball clubhouse UI
 
-The rebuilt Windows client and `deployment/mlp-dedicated-1.4.8-linux-x86_64.tar.gz` must be installed together. Install the matching server release using its pinned installer. Deployment to the hosted server is manual.
+The rebuilt Windows client and `deployment/mlp-dedicated-1.4.9-linux-x86_64.tar.gz` must be installed together. Install the matching server release using its pinned installer. Deployment to the hosted server is manual.
 
-Grass now covers the ground immediately outside the stadium wall, while the existing service roads and curbs stay paved. The solid city-floor collision remains in place. Home-run and walk-off celebrations have been removed, and home runs use the existing highlight replay system again in every mode. Rookie mode and the tutorial remain available.
+Teammates now collide, including fielding bots and physical tumble bodies. Opponents remain pass-through, including their tumble bodies. Team changes refresh these exceptions, while grabs retain their temporary holder/target exclusion. Punching, dragging and throwing remain teammate interactions. The shop and locker use parchment cards, brick-red accents and the actual ballpark as their backdrop.
+
+The walking camera watchdog recognizes the controller's actual camera by identity, including sibling cameras with generated names, so normal walking no longer triggers repeated camera recovery. Replay recovery and its safe field fallback remain active.
+
+The current Windows client replaces the exterior grass with a continuous parking lot across the stadium block, extending to the surrounding streets. Marked bays, driving aisles and parked cars fill the irregular spaces around the fence and existing buildings. This scenery update is client-only and remains compatible with the published 1.4.8 server. The solid city-floor collision remains in place. Home-run and walk-off celebrations have been removed, and home runs use the existing highlight replay system again in every mode. Rookie mode and the tutorial remain available.
+
+The current client also repairs replay-to-gameplay camera transitions: benched bodies no longer move the spectator camera underground, camera restoration snaps to a fresh valid pose, and a safe field view covers missing or deleted cameras. The watchdog validates the camera position as well as its owner. Practice/Season scene wrappers resolve replay state from the actual tracker. This camera fix uses the existing 1.4.8 protocol and does not require a server update.
 
 # How Online works in 1.4.6
 
