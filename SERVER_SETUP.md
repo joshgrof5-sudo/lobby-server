@@ -1,3 +1,18 @@
+# 1.5.4: dugout celebrations and safe steal cleanup
+
+Deploy the 1.5.4 dedicated archive with a client exported from the current
+1.5.4 project. The new celebration RPCs require matching client/server builds.
+This update includes own-team dugout cheers for hits, runs and home runs,
+returning-player high-fives and hugs, full reciprocal hug poses, and removal
+of the nearby hug prompt. The original batting power is restored. Throw
+plans validate their ball and receiver before casting, fixing the freed
+object error after a caught-stealing play.
+
+The installer backs up accounts, verifies the archive, checks the headless
+pack and backend, and restarts only baseball. HTTPS, account storage, UDP
+7002, and the other game's UDP 7777 remain configured as before. Installation
+on the Droplet still requires its console or an authorized SSH key.
+
 # 1.5.3: visible returns after runs and every out
 
 Install the rebuilt Windows client and `deployment/mlp-dedicated-1.5.3-linux-x86_64.tar.gz` together. The match worker owns return-walk authorization and the new dugout routing. Hosting deployment remains manual using the pinned installer.
