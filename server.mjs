@@ -166,7 +166,7 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
   async function route(req) {
     const url = new URL(req.url, 'http://localhost'); const path = url.pathname; const method = req.method;
     cleanup();
-    if (method === 'GET' && (path === '/' || path === '/health')) return { service: 'mlp-social', version: 1, matchmaking:true, account_inventory:true,dedicated_matches:!!pool,game_version:'1.5.4',hockey_version:'1.6.1-hockey',hockey_cloud:true,sports:['baseball','hockey'] };
+    if (method === 'GET' && (path === '/' || path === '/health')) return { service: 'mlp-social', version: 1, matchmaking:true, account_inventory:true,dedicated_matches:!!pool,game_version:'1.5.4',server_release:'1.6.2',hockey_version:'1.6.1-hockey',hockey_cloud:true,sports:['baseball','hockey'] };
     if(method==='POST'&&path==='/internal/match'){
       const data=await body(req),worker=pool?.authenticate(String(data.match_id??''),req.headers['x-mlp-worker']);
       requireValue(worker,403,'Invalid match worker.');
