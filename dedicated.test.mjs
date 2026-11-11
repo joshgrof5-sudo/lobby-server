@@ -24,9 +24,9 @@ async function fixture(t){
 test('hockey uses the shared account service, a separate ten-skater queue and a hockey worker',async t=>{
   const f=await fixture(t);
   const hockey=await f.register('hockey_captain');
-  const party=(await f.api(hockey,'/v1/parties/create',{mode:'hockey',version:'1.6.0-hockey'})).party;
+  const party=(await f.api(hockey,'/v1/parties/create',{mode:'hockey',version:'1.6.1-hockey'})).party;
   assert.equal(party.mode,'hockey');assert.equal(party.max,5);
-  const match=(await f.api(hockey,'/v1/matchmaking/join',{version:'1.6.0-hockey'})).match;
+  const match=(await f.api(hockey,'/v1/matchmaking/join',{version:'1.6.1-hockey'})).match;
   assert.notEqual(match.id,f.match.id);assert.equal(match.mode,'hockey');assert.equal(match.max,10);assert.equal(match.bots,9);
   await f.playing();await f.worker('finish');
   f.advance(30);await f.api(hockey,'/v1/presence');f.advance(31);await f.api(hockey,'/v1/presence');
