@@ -1,0 +1,20 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createService} from './server.mjs';
+test('hockey cloud saves are account scoped, durable, bounded and use compare-and-swap',async t=>{
+  const service=createService({authLimit:100});await new Promise(r=>service.server.listen(0,'127.0.0.1',r));t.after(()=>service.close());
+  const base=`http://127.0.0.1:${service.server.address().port}`;
+  const api=async(path,token,data)=>{const r=await fetch(base+path,{method:data===undefined?'GET':'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{})},body:data===undefined?undefined:JSON.stringify(data)});return {status:r.status,...await r.json()};};
+  const a=await api('/v1/auth/register',null,{username:'cloud_alpha',password:'test-cloud-password'}),b=await api('/v1/auth/register',null,{username:'cloud_beta',password:'test-cloud-password'});
+  assert.equal((await api('/v1/cloud/hockey')).status,401);
+  const first=await api('/v1/cloud/hockey',a.token,{revision:0,document:{profile:'[cosmetics]\ncredits=160\n',career:'[league]\nstate={}\n'}});
+  assert.equal(first.revision,1);
+  assert.deepEqual((await api('/v1/cloud/hockey',b.token)).document,{});
+  const clash=await api('/v1/cloud/hockey',a.token,{revision:0,document:{profile:'local'}});
+  assert.equal(clash.conflict,true);assert.equal(clash.revision,1);assert.equal(clash.document.profile,first.document.profile);
+  assert.equal((await api('/v1/cloud/hockey',a.token,{revision:1,document:{profile:'x'.repeat(600001)}})).status,400);
+  assert.equal((await api('/v1/cloud/hockey',a.token,{revision:1,document:{unauthorized:'x'}})).status,400);
+  const second=await api('/v1/cloud/hockey',a.token,{revision:1,document:{profile:'updated'}});
+  assert.equal(second.revision,2);assert.equal(service.db.prepare('SELECT COUNT(*) AS n FROM hockey_cloud_history').get().n,2);
+  assert.equal((await api('/v1/cloud/hockey',a.token)).document.profile,'updated');
+});

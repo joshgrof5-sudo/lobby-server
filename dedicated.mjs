@@ -21,7 +21,7 @@ export function createDedicatedPool(options,onExit,controlURL){
       // The release runtime auto-loads its same-named PCK and bootstrap scene.
       // --main-pack is only needed by editor binaries used in integration tests.
       const args=['--headless','--audio-driver','Dummy',...(options.pack?(options.packWithEditor?['--main-pack',options.pack]:[]):['--path',options.project,'--script','res://dedicated_match.gd'])];
-      const child=(options.spawnProcess??spawn)(options.executable,args,{windowsHide:true,env:{...process.env,MLP_DEDICATED:'1',MLP_MATCH_ID:game.id,MLP_MATCH_PORT:String(port),MLP_WORKER_KEY:key,MLP_MATCH_CONTROL_URL:controlURL(),...(options.testEnv??{})},stdio:['ignore','pipe','pipe']});
+      const child=(options.spawnProcess??spawn)(options.executable,args,{windowsHide:true,env:{...process.env,MLP_DEDICATED:'1',MLP_MATCH_ID:game.id,MLP_MATCH_MODE:game.mode??'classic',MLP_MATCH_PORT:String(port),MLP_WORKER_KEY:key,MLP_MATCH_CONTROL_URL:controlURL(),...(options.testEnv??{})},stdio:['ignore','pipe','pipe']});
       const worker={child,key,port,ready:false,seen:Date.now(),started:Date.now()};workers.set(game.id,worker);
       // Game logs contain no account passwords, session tokens or worker keys.
       for(const stream of [child.stdout,child.stderr])stream.on('data',data=>{if(options.log)options.log(String(data));});
