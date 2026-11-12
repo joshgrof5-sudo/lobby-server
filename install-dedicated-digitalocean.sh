@@ -3,8 +3,8 @@
 # Only mlp-social is restarted. BouncyBallBattle and HTTPS are not restarted.
 set -Eeuo pipefail
 trap 'printf "\nDedicated setup stopped at line %s. Send this output before retrying.\n" "$LINENO" >&2' ERR
-release_url='https://github.com/joshgrof5-sudo/lobby-server/releases/download/server-v1.6.5/mlp-dedicated-1.6.5-linux-x86_64.tar.gz'
-release_sha='6897b06d3955436903d3fb59080024d92b4e3c322c1736ad754c5fbe9fe8142e'
+release_url='https://github.com/joshgrof5-sudo/lobby-server/releases/download/server-v1.6.6/mlp-dedicated-1.6.6-linux-x86_64.tar.gz'
+release_sha='c09ad0999c7458d1199533032920f52168d0587c4f66682382c69586438d9289'
 app=/opt/mlp-social/app
 node=/opt/mlp-social/runtime/bin/node
 database=/var/lib/mlp-social/social.sqlite
@@ -98,7 +98,7 @@ systemctl daemon-reload
 systemctl start mlp-social.service
 healthy=0
 for attempt in {1..20}; do
-    if "$node" --input-type=module -e "const r=await fetch('http://127.0.0.1:18081/health',{signal:AbortSignal.timeout(1500)});const d=await r.json();if(!r.ok||!d.dedicated_matches||d.game_version!=='1.5.4'||d.hockey_version!=='1.6.1-hockey'||d.server_release!=='1.6.5'||!d.hockey_cloud)process.exit(1)" 2>/dev/null; then healthy=1; break; fi
+    if "$node" --input-type=module -e "const r=await fetch('http://127.0.0.1:18081/health',{signal:AbortSignal.timeout(1500)});const d=await r.json();if(!r.ok||!d.dedicated_matches||d.game_version!=='1.5.4'||d.hockey_version!=='1.6.1-hockey'||d.server_release!=='1.6.6'||!d.hockey_cloud)process.exit(1)" 2>/dev/null; then healthy=1; break; fi
     sleep 1
 done
 (( healthy == 1 )) || rollback
