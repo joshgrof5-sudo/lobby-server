@@ -1,3 +1,6 @@
+import {DatabaseSync} from 'node:sqlite';
+import {createCloud} from './cloud.mjs';
+import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createService} from './server.mjs';
@@ -17,4 +20,21 @@ test('hockey cloud saves are account scoped, durable, bounded and use compare-an
   const second=await api('/v1/cloud/hockey',a.token,{revision:1,document:{profile:'updated'}});
   assert.equal(second.revision,2);assert.equal(service.db.prepare('SELECT COUNT(*) AS n FROM hockey_cloud_history').get().n,2);
   assert.equal((await api('/v1/cloud/hockey',a.token)).document.profile,'updated');
+});
+
+test('new hockey collections replicate owned skins in the correct equipment slot',()=>{
+ const db=new DatabaseSync(':memory:');db.exec("CREATE TABLE users(id TEXT PRIMARY KEY); INSERT INTO users VALUES('skin-user');");
+ const cloud=createCloud(db,()=>123);
+ const catalog=JSON.parse(readFileSync(new URL('./hockey_skin_catalog.json',import.meta.url),'utf8'));
+ let revision=0;
+ for(let i=0;i<24;i++){
+  const helmet=catalog.helmet[i].id,stick=catalog.stick[i].id;
+  const profile=`[cosmetics]\nowned=${JSON.stringify([helmet,stick])}\nhelmet=${JSON.stringify(helmet)}\nstick=${JSON.stringify(stick)}\n`;
+  revision=cloud.write('skin-user',{revision,document:{profile}}).revision;
+  assert.deepEqual(cloud.gear('skin-user'),{hockey_helmet:helmet,hockey_stick:stick});
+ }
+ const swapped=`[cosmetics]\nowned=${JSON.stringify([catalog.helmet[0].id,catalog.stick[0].id])}\nhelmet=${JSON.stringify(catalog.stick[0].id)}\nstick=${JSON.stringify(catalog.helmet[0].id)}\n`;
+ cloud.write('skin-user',{revision,document:{profile:swapped}});
+ assert.deepEqual(cloud.gear('skin-user'),{hockey_helmet:'helmet_hockey_original',hockey_stick:'hockey_stick_original'});
+ db.close();
 });

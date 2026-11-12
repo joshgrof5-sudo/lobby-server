@@ -1,3 +1,7 @@
+import {readFileSync} from 'node:fs';
+const hockeySkins=JSON.parse(readFileSync(new URL('./hockey_skin_catalog.json',import.meta.url),'utf8'));
+const legacyFinishes=['original','arctic','redline','blackice','aurora','copper','checker','glacier','champion','sunset'];
+const validHockeyGear=Object.fromEntries(['helmet','stick'].map(slot=>[slot,new Set([...legacyFinishes.map(id=>(slot==='helmet'?'helmet_hockey_':'hockey_stick_')+id),...hockeySkins[slot].map(item=>item.id)])]));
 export function createCloud(db,clock){
   db.exec(`CREATE TABLE IF NOT EXISTS hockey_cloud(user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, revision INTEGER NOT NULL, document TEXT NOT NULL, updated INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS hockey_cloud_history(user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, revision INTEGER NOT NULL, document TEXT NOT NULL, updated INTEGER NOT NULL, PRIMARY KEY(user_id,revision));`);
@@ -30,7 +34,7 @@ export function createCloud(db,clock){
       try{values[match[1]]=JSON.parse(match[2]);}catch{}
     }
     const owned=new Set(['helmet_hockey_original','hockey_stick_original','helmet_hockey_arctic','hockey_stick_arctic',...(Array.isArray(values.owned)?values.owned:[])]);
-    for(const slot of ['helmet','stick'])if(typeof values[slot]==='string'&&owned.has(values[slot])&&/^(helmet_hockey_|hockey_stick_)(original|arctic|redline|blackice|aurora|copper|checker|glacier|champion|sunset)$/.test(values[slot]))result['hockey_'+slot]=values[slot];
+    for(const slot of ['helmet','stick'])if(typeof values[slot]==='string'&&owned.has(values[slot])&&validHockeyGear[slot].has(values[slot]))result['hockey_'+slot]=values[slot];
     return result;
   };
   return {read,write,gear};

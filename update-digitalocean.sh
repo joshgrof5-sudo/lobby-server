@@ -24,7 +24,7 @@ const source=new DatabaseSync(process.argv[2],{readOnly:true});
 await backup(source,process.argv[3]);
 source.close();
 JS
-for file in server.mjs package.json server.test.mjs matchmaking.test.mjs inventory.mjs dedicated.mjs equipment_catalog.json inventory.test.mjs dedicated.test.mjs; do
+for file in server.mjs package.json server.test.mjs matchmaking.test.mjs inventory.mjs dedicated.mjs cloud.mjs cloud.test.mjs hockey_skin_catalog.json equipment_catalog.json inventory.test.mjs dedicated.test.mjs; do
     if [[ -f $app/$file ]]; then cp "$app/$file" "$staging/previous/$file"; fi
 done
 systemctl stop mlp-social.service
@@ -32,7 +32,7 @@ rollback() {
     trap - ERR
     echo 'The new service did not verify. Restoring the previous baseball server code.' >&2
     systemctl stop mlp-social.service || true
-    for file in server.mjs package.json server.test.mjs matchmaking.test.mjs inventory.mjs dedicated.mjs equipment_catalog.json inventory.test.mjs dedicated.test.mjs; do
+    for file in server.mjs package.json server.test.mjs matchmaking.test.mjs inventory.mjs dedicated.mjs cloud.mjs cloud.test.mjs hockey_skin_catalog.json equipment_catalog.json inventory.test.mjs dedicated.test.mjs; do
         if [[ -f $staging/previous/$file ]]; then install -m 0644 "$staging/previous/$file" "$app/$file"; fi
     done
     systemctl start mlp-social.service || true
@@ -40,7 +40,7 @@ rollback() {
     exit 1
 }
 trap rollback ERR
-for file in server.mjs package.json server.test.mjs matchmaking.test.mjs inventory.mjs dedicated.mjs equipment_catalog.json inventory.test.mjs dedicated.test.mjs; do
+for file in server.mjs package.json server.test.mjs matchmaking.test.mjs inventory.mjs dedicated.mjs cloud.mjs cloud.test.mjs hockey_skin_catalog.json equipment_catalog.json inventory.test.mjs dedicated.test.mjs; do
     install -m 0644 "$staging/source/$file" "$app/$file"
 done
 systemctl start mlp-social.service

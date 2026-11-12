@@ -3,8 +3,8 @@
 # Only mlp-social is restarted. BouncyBallBattle and HTTPS are not restarted.
 set -Eeuo pipefail
 trap 'printf "\nDedicated setup stopped at line %s. Send this output before retrying.\n" "$LINENO" >&2' ERR
-release_url='https://github.com/joshgrof5-sudo/lobby-server/releases/download/server-v1.6.12/mlp-dedicated-1.6.12-linux-x86_64.tar.gz'
-release_sha='c29ced8b1299b60235f2dd0b0dc5a5095d61a74033e846b18006719f713fae9f'
+release_url='https://github.com/joshgrof5-sudo/lobby-server/releases/download/server-v1.6.13/mlp-dedicated-1.6.13-linux-x86_64.tar.gz'
+release_sha='dfa9fa1acbb2b077ea98baffb376023c30a665d3e2a03bb8ea08cfabec235904'
 app=/opt/mlp-social/app
 node=/opt/mlp-social/runtime/bin/node
 database=/var/lib/mlp-social/social.sqlite
@@ -37,7 +37,7 @@ staging=$(mktemp -d /opt/mlp-social/dedicated-update.XXXXXXXX)
 curl --fail --location --retry 2 --connect-timeout 15 --max-time 300 --proto '=https' "$release_url" -o "$staging/release.tar.gz"
 printf '%s  %s\n' "$release_sha" "$staging/release.tar.gz" | sha256sum --check -
 while IFS= read -r member; do
-    case "$member" in mlp-game.x86_64|mlp-game.pck|server.mjs|dedicated.mjs|inventory.mjs|cloud.mjs|cloud.test.mjs|equipment_catalog.json|package.json|server.test.mjs|matchmaking.test.mjs|inventory.test.mjs|dedicated.test.mjs|release.json|GODOT-LICENSE.txt) ;;
+    case "$member" in mlp-game.x86_64|mlp-game.pck|server.mjs|dedicated.mjs|inventory.mjs|cloud.mjs|hockey_skin_catalog.json|cloud.test.mjs|equipment_catalog.json|package.json|server.test.mjs|matchmaking.test.mjs|inventory.test.mjs|dedicated.test.mjs|release.json|GODOT-LICENSE.txt) ;;
         *) echo "Unexpected release entry: $member" >&2; exit 1;; esac
 done < <(tar -tzf "$staging/release.tar.gz")
 install -d -m 0755 "$staging/source"
@@ -60,7 +60,7 @@ import {DatabaseSync,backup} from 'node:sqlite';
 const source=new DatabaseSync(process.argv[2],{readOnly:true});
 await backup(source,process.argv[3]);source.close();
 JS
-files=(server.mjs dedicated.mjs inventory.mjs cloud.mjs cloud.test.mjs equipment_catalog.json package.json server.test.mjs matchmaking.test.mjs inventory.test.mjs dedicated.test.mjs)
+files=(server.mjs dedicated.mjs inventory.mjs cloud.mjs hockey_skin_catalog.json cloud.test.mjs equipment_catalog.json package.json server.test.mjs matchmaking.test.mjs inventory.test.mjs dedicated.test.mjs)
 for file in "${files[@]}"; do if [[ -f $app/$file ]]; then cp "$app/$file" "$staging/previous/$file"; fi; done
 if [[ -f $dropin ]]; then cp "$dropin" "$staging/previous/dedicated.conf"; fi
 rollback() {
@@ -98,7 +98,7 @@ systemctl daemon-reload
 systemctl start mlp-social.service
 healthy=0
 for attempt in {1..20}; do
-    if "$node" --input-type=module -e "const r=await fetch('http://127.0.0.1:18081/health',{signal:AbortSignal.timeout(1500)});const d=await r.json();if(!r.ok||!d.dedicated_matches||d.game_version!=='1.5.4'||d.hockey_version!=='1.6.1-hockey'||d.server_release!=='1.6.12'||!d.hockey_cloud)process.exit(1)" 2>/dev/null; then healthy=1; break; fi
+    if "$node" --input-type=module -e "const r=await fetch('http://127.0.0.1:18081/health',{signal:AbortSignal.timeout(1500)});const d=await r.json();if(!r.ok||!d.dedicated_matches||d.game_version!=='1.5.4'||d.hockey_version!=='1.6.1-hockey'||d.server_release!=='1.6.13'||!d.hockey_cloud)process.exit(1)" 2>/dev/null; then healthy=1; break; fi
     sleep 1
 done
 (( healthy == 1 )) || rollback
