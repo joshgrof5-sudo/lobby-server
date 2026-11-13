@@ -9,7 +9,7 @@ function check(value,message,status=400){if(!value)throw Object.assign(new Error
 export function dailyOffers(time=Date.now()){
   const day=Math.floor(time/86400000);
   return ['bat','helmet'].flatMap(type=>catalog.filter(item=>item.type===type&&item.price>0&&!item.event)
-    .map(item=>({item,rank:createHash('sha256').update(`mlp-daily-v1|${day}|${type}|${item.id}`).digest('hex')}))
+    .map(item=>({item,rank:createHash('sha256').update(`mlp-daily-v2|${day}|${type}|${item.id}`).digest('hex')}))
     .sort((a,b)=>a.rank<b.rank?-1:a.rank>b.rank?1:a.item.id.localeCompare(b.item.id)).slice(0,4).map(entry=>entry.item));
 }
 

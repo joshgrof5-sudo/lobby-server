@@ -2,102 +2,120 @@
   "helmet": [
     {
       "id": "helmet_hockey_rally",
-      "name": "Rally Stripe",
+      "name": "Rally Wings",
       "slot": "helmet",
       "color": "dfd8c6",
       "accent": "a52b3a",
       "pattern": 1,
       "price": 250,
       "metallic": 0.18,
-      "roughness": 0.4
+      "roughness": 0.4,
+      "artwork": "res://hockey_skin_art/helmet_hockey_rally.svg",
+      "description": "Illustrated helmet shell: Rally Wings."
     },
     {
       "id": "helmet_hockey_varsity",
-      "name": "Varsity Navy",
+      "name": "Varsity Crest",
       "slot": "helmet",
       "color": "172942",
       "accent": "f2e2b8",
       "pattern": 8,
       "price": 350,
       "metallic": 0.15,
-      "roughness": 0.42
+      "roughness": 0.42,
+      "artwork": "res://hockey_skin_art/helmet_hockey_varsity.svg",
+      "description": "Illustrated helmet shell: Varsity Crest."
     },
     {
       "id": "helmet_hockey_bubblegum",
-      "name": "Bubblegum",
+      "name": "Bubble Beast",
       "slot": "helmet",
       "color": "dd78a5",
       "accent": "fff0dc",
       "pattern": 7,
       "price": 450,
       "metallic": 0.12,
-      "roughness": 0.38
+      "roughness": 0.38,
+      "artwork": "res://hockey_skin_art/helmet_hockey_bubblegum.svg",
+      "description": "Illustrated helmet shell: Bubble Beast."
     },
     {
       "id": "helmet_hockey_forest",
-      "name": "Forest Ranger",
+      "name": "Forest Stag",
       "slot": "helmet",
       "color": "244e3b",
       "accent": "d0b66d",
       "pattern": 8,
       "price": 550,
       "metallic": 0.15,
-      "roughness": 0.42
+      "roughness": 0.42,
+      "artwork": "res://hockey_skin_art/helmet_hockey_forest.svg",
+      "description": "Illustrated helmet shell: Forest Stag."
     },
     {
       "id": "helmet_hockey_retro_teal",
-      "name": "Retro Teal",
+      "name": "Coastal Kraken",
       "slot": "helmet",
       "color": "237e86",
       "accent": "ec9f63",
       "pattern": 6,
       "price": 650,
       "metallic": 0.2,
-      "roughness": 0.32
+      "roughness": 0.32,
+      "artwork": "res://hockey_skin_art/helmet_hockey_retro_teal.svg",
+      "description": "Illustrated helmet shell: Coastal Kraken."
     },
     {
       "id": "helmet_hockey_royal_purple",
-      "name": "Purple Reign",
+      "name": "Royal Cobra",
       "slot": "helmet",
       "color": "493170",
       "accent": "d0b2ee",
       "pattern": 1,
       "price": 800,
       "metallic": 0.28,
-      "roughness": 0.3
+      "roughness": 0.3,
+      "artwork": "res://hockey_skin_art/helmet_hockey_royal_purple.svg",
+      "description": "Illustrated helmet shell: Royal Cobra."
     },
     {
       "id": "helmet_hockey_sunburst",
-      "name": "Sunburst",
+      "name": "Sunfire Phoenix",
       "slot": "helmet",
       "color": "c84e2f",
       "accent": "f7d06a",
       "pattern": 7,
       "price": 1000,
       "metallic": 0.25,
-      "roughness": 0.3
+      "roughness": 0.3,
+      "artwork": "res://hockey_skin_art/helmet_hockey_sunburst.svg",
+      "description": "Illustrated helmet shell: Sunfire Phoenix."
     },
     {
       "id": "helmet_hockey_silverline",
-      "name": "Silverline",
+      "name": "Silver Specter",
       "slot": "helmet",
       "color": "59636d",
       "accent": "e5e8e8",
       "pattern": 5,
       "price": 1100,
-      "metallic": 0.72,
-      "roughness": 0.26
+      "metallic": 0.48,
+      "roughness": 0.3,
+      "artwork": "res://hockey_skin_art/helmet_hockey_silverline.svg",
+      "description": "Illustrated helmet shell: Silver Specter."
     },
     {
       "id": "helmet_hockey_tiger",
-      "name": "Tiger Stripe",
+      "name": "Tiger Fang",
       "slot": "helmet",
       "color": "ca772f",
       "accent": "20252e",
       "pattern": 10,
       "price": 1250,
       "metallic": 0.18,
-      "roughness": 0.36
+      "roughness": 0.36,
+      "artwork": "res://hockey_skin_art/helmet_hockey_tiger.svg",
+      "description": "Illustrated helmet shell: Tiger Fang."
     },
     {
       "id": "helmet_hockey_snowcat",
@@ -108,84 +126,100 @@
       "pattern": 11,
       "price": 1400,
       "metallic": 0.2,
-      "roughness": 0.38
+      "roughness": 0.38,
+      "artwork": "res://hockey_skin_art/helmet_hockey_snowcat.svg",
+      "description": "Illustrated helmet shell: Snow Leopard."
     },
     {
       "id": "helmet_hockey_starfield",
-      "name": "Starfield",
+      "name": "Orbit Ranger",
       "slot": "helmet",
       "color": "15223f",
       "accent": "d7e5ef",
       "pattern": 9,
       "price": 1600,
       "metallic": 0.4,
-      "roughness": 0.27
+      "roughness": 0.3,
+      "artwork": "res://hockey_skin_art/helmet_hockey_starfield.svg",
+      "description": "Illustrated helmet shell: Orbit Ranger."
     },
     {
       "id": "helmet_hockey_carbon_crown",
-      "name": "Carbon Crown",
+      "name": "Cyber Wolf",
       "slot": "helmet",
       "color": "1c2227",
       "accent": "4e5961",
       "pattern": 2,
       "price": 1750,
-      "metallic": 0.55,
-      "roughness": 0.32
+      "metallic": 0.48,
+      "roughness": 0.32,
+      "artwork": "res://hockey_skin_art/helmet_hockey_carbon_crown.svg",
+      "description": "Illustrated helmet shell: Cyber Wolf."
     },
     {
       "id": "helmet_hockey_rose_gold",
-      "name": "Rose Gold",
+      "name": "Rose Thorns",
       "slot": "helmet",
       "color": "bc7d72",
       "accent": "f3d4bb",
       "pattern": 8,
       "price": 1900,
-      "metallic": 0.75,
-      "roughness": 0.25
+      "metallic": 0.48,
+      "roughness": 0.3,
+      "artwork": "res://hockey_skin_art/helmet_hockey_rose_gold.svg",
+      "description": "Illustrated helmet shell: Rose Thorns."
     },
     {
       "id": "helmet_hockey_blue_steel",
-      "name": "Blue Steel",
+      "name": "Steel Shark",
       "slot": "helmet",
       "color": "35546c",
       "accent": "b6d9e5",
       "pattern": 5,
       "price": 2000,
-      "metallic": 0.7,
-      "roughness": 0.26
+      "metallic": 0.48,
+      "roughness": 0.3,
+      "artwork": "res://hockey_skin_art/helmet_hockey_blue_steel.svg",
+      "description": "Illustrated helmet shell: Steel Shark."
     },
     {
       "id": "helmet_hockey_paintbox",
-      "name": "Paintbox",
+      "name": "Paint Riot",
       "slot": "helmet",
       "color": "e5dfcf",
       "accent": "dc5950",
       "pattern": 12,
       "price": 2100,
       "metallic": 0.18,
-      "roughness": 0.38
+      "roughness": 0.38,
+      "artwork": "res://hockey_skin_art/helmet_hockey_paintbox.svg",
+      "description": "Illustrated helmet shell: Paint Riot."
     },
     {
       "id": "helmet_hockey_polar_fade",
-      "name": "Polar Fade",
+      "name": "Polar Bear",
       "slot": "helmet",
       "color": "2c7290",
       "accent": "e1edf0",
       "pattern": 7,
       "price": 2200,
       "metallic": 0.36,
-      "roughness": 0.29
+      "roughness": 0.3,
+      "artwork": "res://hockey_skin_art/helmet_hockey_polar_fade.svg",
+      "description": "Illustrated helmet shell: Polar Bear."
     },
     {
       "id": "helmet_hockey_storm",
-      "name": "Storm Front",
+      "name": "Thunderhead",
       "slot": "helmet",
       "color": "333e50",
       "accent": "a0bdd0",
       "pattern": 3,
       "price": 2300,
       "metallic": 0.48,
-      "roughness": 0.32
+      "roughness": 0.32,
+      "artwork": "res://hockey_skin_art/helmet_hockey_storm.svg",
+      "description": "Illustrated helmet shell: Thunderhead."
     },
     {
       "id": "helmet_hockey_crown_jewel",
@@ -195,19 +229,23 @@
       "accent": "d7b355",
       "pattern": 8,
       "price": 2400,
-      "metallic": 0.65,
-      "roughness": 0.27
+      "metallic": 0.48,
+      "roughness": 0.3,
+      "artwork": "res://hockey_skin_art/helmet_hockey_crown_jewel.svg",
+      "description": "Illustrated helmet shell: Crown Jewel."
     },
     {
       "id": "helmet_hockey_black_gold",
-      "name": "Black & Gold",
+      "name": "Golden Panther",
       "slot": "helmet",
       "color": "131b22",
       "accent": "d0a54b",
       "pattern": 1,
       "price": 2500,
-      "metallic": 0.67,
-      "roughness": 0.25
+      "metallic": 0.48,
+      "roughness": 0.3,
+      "artwork": "res://hockey_skin_art/helmet_hockey_black_gold.svg",
+      "description": "Illustrated helmet shell: Golden Panther."
     },
     {
       "id": "helmet_hockey_icebreaker",
@@ -217,19 +255,23 @@
       "accent": "f1f6ed",
       "pattern": 3,
       "price": 2600,
-      "metallic": 0.52,
-      "roughness": 0.26
+      "metallic": 0.48,
+      "roughness": 0.3,
+      "artwork": "res://hockey_skin_art/helmet_hockey_icebreaker.svg",
+      "description": "Illustrated helmet shell: Icebreaker."
     },
     {
       "id": "helmet_hockey_platinum",
-      "name": "Platinum Club",
+      "name": "Platinum Ronin",
       "slot": "helmet",
       "color": "9babb0",
       "accent": "f0ead8",
       "pattern": 8,
       "price": 2800,
-      "metallic": 0.82,
-      "roughness": 0.22
+      "metallic": 0.48,
+      "roughness": 0.3,
+      "artwork": "res://hockey_skin_art/helmet_hockey_platinum.svg",
+      "description": "Illustrated helmet shell: Platinum Ronin."
     },
     {
       "id": "helmet_hockey_meteor",
@@ -239,65 +281,77 @@
       "accent": "edb569",
       "pattern": 9,
       "price": 2900,
-      "metallic": 0.5,
-      "roughness": 0.29
+      "metallic": 0.48,
+      "roughness": 0.3,
+      "artwork": "res://hockey_skin_art/helmet_hockey_meteor.svg",
+      "description": "Illustrated helmet shell: Meteor Shower."
     },
     {
       "id": "helmet_hockey_rink_royalty",
-      "name": "Rink Royalty",
+      "name": "Lionheart",
       "slot": "helmet",
       "color": "233a61",
       "accent": "e2c877",
       "pattern": 5,
       "price": 3000,
-      "metallic": 0.72,
-      "roughness": 0.24
+      "metallic": 0.48,
+      "roughness": 0.3,
+      "artwork": "res://hockey_skin_art/helmet_hockey_rink_royalty.svg",
+      "description": "Illustrated helmet shell: Lionheart."
     },
     {
       "id": "helmet_hockey_northern_crown",
-      "name": "Northern Crown",
+      "name": "Northern Owl",
       "slot": "helmet",
       "color": "263f46",
       "accent": "bfe1b9",
       "pattern": 4,
       "price": 3200,
-      "metallic": 0.62,
-      "roughness": 0.26
+      "metallic": 0.48,
+      "roughness": 0.3,
+      "artwork": "res://hockey_skin_art/helmet_hockey_northern_crown.svg",
+      "description": "Illustrated helmet shell: Northern Owl."
     }
   ],
   "stick": [
     {
       "id": "hockey_stick_bench_tape",
-      "name": "Bench Tape",
+      "name": "Bench Bandit",
       "slot": "stick",
       "color": "323b43",
       "accent": "dfd9c5",
       "pattern": 6,
       "price": 200,
       "metallic": 0.12,
-      "roughness": 0.7
+      "roughness": 0.7,
+      "artwork": "res://hockey_skin_art/hockey_stick_bench_tape.svg",
+      "description": "Illustrated shaft wrap and blade graphic: Bench Bandit."
     },
     {
       "id": "hockey_stick_candy_cane",
-      "name": "Candy Cane",
+      "name": "Candy Monster",
       "slot": "stick",
       "color": "a92a3a",
       "accent": "eee4cc",
       "pattern": 1,
       "price": 300,
       "metallic": 0.15,
-      "roughness": 0.55
+      "roughness": 0.55,
+      "artwork": "res://hockey_skin_art/hockey_stick_candy_cane.svg",
+      "description": "Illustrated shaft wrap and blade graphic: Candy Monster."
     },
     {
       "id": "hockey_stick_mint_tape",
-      "name": "Mint Tape",
+      "name": "Venom Coil",
       "slot": "stick",
       "color": "263d3a",
       "accent": "9dd6b8",
       "pattern": 7,
       "price": 400,
       "metallic": 0.12,
-      "roughness": 0.58
+      "roughness": 0.58,
+      "artwork": "res://hockey_skin_art/hockey_stick_mint_tape.svg",
+      "description": "Illustrated shaft wrap and blade graphic: Venom Coil."
     },
     {
       "id": "hockey_stick_rink_rat",
@@ -308,128 +362,152 @@
       "pattern": 12,
       "price": 500,
       "metallic": 0.12,
-      "roughness": 0.65
+      "roughness": 0.65,
+      "artwork": "res://hockey_skin_art/hockey_stick_rink_rat.svg",
+      "description": "Illustrated shaft wrap and blade graphic: Rink Rat."
     },
     {
       "id": "hockey_stick_lumber",
-      "name": "Classic Lumber",
+      "name": "Lumberjack",
       "slot": "stick",
       "color": "845330",
       "accent": "d8b078",
       "pattern": 10,
       "price": 650,
       "metallic": 0.08,
-      "roughness": 0.68
+      "roughness": 0.68,
+      "artwork": "res://hockey_skin_art/hockey_stick_lumber.svg",
+      "description": "Illustrated shaft wrap and blade graphic: Lumberjack."
     },
     {
       "id": "hockey_stick_zebra",
-      "name": "Zebra Wrap",
+      "name": "Zebra Rush",
       "slot": "stick",
       "color": "d4d8d2",
       "accent": "20272f",
       "pattern": 10,
       "price": 800,
       "metallic": 0.15,
-      "roughness": 0.52
+      "roughness": 0.52,
+      "artwork": "res://hockey_skin_art/hockey_stick_zebra.svg",
+      "description": "Illustrated shaft wrap and blade graphic: Zebra Rush."
     },
     {
       "id": "hockey_stick_hazard",
-      "name": "Hazard Tape",
+      "name": "Hazard Zone",
       "slot": "stick",
       "color": "252d30",
       "accent": "e6bd41",
       "pattern": 1,
       "price": 1000,
       "metallic": 0.2,
-      "roughness": 0.48
+      "roughness": 0.48,
+      "artwork": "res://hockey_skin_art/hockey_stick_hazard.svg",
+      "description": "Illustrated shaft wrap and blade graphic: Hazard Zone."
     },
     {
       "id": "hockey_stick_electric",
-      "name": "Electric Tape",
+      "name": "Shock Fang",
       "slot": "stick",
       "color": "254761",
       "accent": "8bc7e4",
       "pattern": 3,
       "price": 1100,
       "metallic": 0.22,
-      "roughness": 0.42
+      "roughness": 0.42,
+      "artwork": "res://hockey_skin_art/hockey_stick_electric.svg",
+      "description": "Illustrated shaft wrap and blade graphic: Shock Fang."
     },
     {
       "id": "hockey_stick_checkerboard",
-      "name": "Checker Tape",
+      "name": "Checkered Rocket",
       "slot": "stick",
       "color": "e8d9b8",
       "accent": "94404a",
       "pattern": 2,
       "price": 1250,
       "metallic": 0.16,
-      "roughness": 0.55
+      "roughness": 0.55,
+      "artwork": "res://hockey_skin_art/hockey_stick_checkerboard.svg",
+      "description": "Illustrated shaft wrap and blade graphic: Checkered Rocket."
     },
     {
       "id": "hockey_stick_ocean_rope",
-      "name": "Ocean Rope",
+      "name": "Deep Sea",
       "slot": "stick",
       "color": "275975",
       "accent": "c8dfda",
       "pattern": 7,
       "price": 1400,
       "metallic": 0.18,
-      "roughness": 0.55
+      "roughness": 0.55,
+      "artwork": "res://hockey_skin_art/hockey_stick_ocean_rope.svg",
+      "description": "Illustrated shaft wrap and blade graphic: Deep Sea."
     },
     {
       "id": "hockey_stick_crimson_weave",
-      "name": "Crimson Weave",
+      "name": "Crimson Dragon",
       "slot": "stick",
       "color": "6e2638",
       "accent": "d38c8c",
       "pattern": 8,
       "price": 1500,
       "metallic": 0.35,
-      "roughness": 0.4
+      "roughness": 0.4,
+      "artwork": "res://hockey_skin_art/hockey_stick_crimson_weave.svg",
+      "description": "Illustrated shaft wrap and blade graphic: Crimson Dragon."
     },
     {
       "id": "hockey_stick_blueprint",
-      "name": "Blueprint",
+      "name": "Blueprint Lab",
       "slot": "stick",
       "color": "204c72",
       "accent": "c6d6dc",
       "pattern": 9,
       "price": 1650,
       "metallic": 0.18,
-      "roughness": 0.5
+      "roughness": 0.5,
+      "artwork": "res://hockey_skin_art/hockey_stick_blueprint.svg",
+      "description": "Illustrated shaft wrap and blade graphic: Blueprint Lab."
     },
     {
       "id": "hockey_stick_fire_tape",
-      "name": "Fire Tape",
+      "name": "Hellfire",
       "slot": "stick",
       "color": "652d28",
       "accent": "efac52",
       "pattern": 4,
       "price": 1800,
       "metallic": 0.28,
-      "roughness": 0.4
+      "roughness": 0.4,
+      "artwork": "res://hockey_skin_art/hockey_stick_fire_tape.svg",
+      "description": "Illustrated shaft wrap and blade graphic: Hellfire."
     },
     {
       "id": "hockey_stick_grip_shift",
-      "name": "Grip Shift",
+      "name": "Gear Grinder",
       "slot": "stick",
       "color": "273e43",
       "accent": "d1b77a",
       "pattern": 6,
       "price": 1900,
       "metallic": 0.3,
-      "roughness": 0.45
+      "roughness": 0.45,
+      "artwork": "res://hockey_skin_art/hockey_stick_grip_shift.svg",
+      "description": "Illustrated shaft wrap and blade graphic: Gear Grinder."
     },
     {
       "id": "hockey_stick_carbon_weave",
-      "name": "Carbon Weave",
+      "name": "Carbon Widow",
       "slot": "stick",
       "color": "171e25",
       "accent": "54616e",
       "pattern": 8,
       "price": 2000,
-      "metallic": 0.55,
-      "roughness": 0.32
+      "metallic": 0.48,
+      "roughness": 0.32,
+      "artwork": "res://hockey_skin_art/hockey_stick_carbon_weave.svg",
+      "description": "Illustrated shaft wrap and blade graphic: Carbon Widow."
     },
     {
       "id": "hockey_stick_paint_splash",
@@ -440,95 +518,113 @@
       "pattern": 12,
       "price": 2100,
       "metallic": 0.16,
-      "roughness": 0.5
+      "roughness": 0.5,
+      "artwork": "res://hockey_skin_art/hockey_stick_paint_splash.svg",
+      "description": "Illustrated shaft wrap and blade graphic: Paint Splash."
     },
     {
       "id": "hockey_stick_space_wrap",
-      "name": "Space Wrap",
+      "name": "Space Walker",
       "slot": "stick",
       "color": "252337",
       "accent": "a69bd5",
       "pattern": 11,
       "price": 2200,
       "metallic": 0.36,
-      "roughness": 0.35
+      "roughness": 0.35,
+      "artwork": "res://hockey_skin_art/hockey_stick_space_wrap.svg",
+      "description": "Illustrated shaft wrap and blade graphic: Space Walker."
     },
     {
       "id": "hockey_stick_pearl_tape",
-      "name": "Pearl Tape",
+      "name": "Pearl Koi",
       "slot": "stick",
       "color": "dfdcd0",
       "accent": "a5bcc7",
       "pattern": 5,
       "price": 2300,
       "metallic": 0.48,
-      "roughness": 0.32
+      "roughness": 0.32,
+      "artwork": "res://hockey_skin_art/hockey_stick_pearl_tape.svg",
+      "description": "Illustrated shaft wrap and blade graphic: Pearl Koi."
     },
     {
       "id": "hockey_stick_copper_wire",
-      "name": "Copper Wire",
+      "name": "Clockwork Owl",
       "slot": "stick",
       "color": "50352f",
       "accent": "cd9161",
       "pattern": 9,
       "price": 2400,
-      "metallic": 0.65,
-      "roughness": 0.32
+      "metallic": 0.48,
+      "roughness": 0.32,
+      "artwork": "res://hockey_skin_art/hockey_stick_copper_wire.svg",
+      "description": "Illustrated shaft wrap and blade graphic: Clockwork Owl."
     },
     {
       "id": "hockey_stick_oil_slick",
-      "name": "Oil Slick",
+      "name": "Oil Spill",
       "slot": "stick",
       "color": "253940",
       "accent": "bc7fb8",
       "pattern": 4,
       "price": 2500,
-      "metallic": 0.65,
-      "roughness": 0.28
+      "metallic": 0.48,
+      "roughness": 0.3,
+      "artwork": "res://hockey_skin_art/hockey_stick_oil_slick.svg",
+      "description": "Illustrated shaft wrap and blade graphic: Oil Spill."
     },
     {
       "id": "hockey_stick_golden_grip",
-      "name": "Golden Grip",
+      "name": "Golden Reaper",
       "slot": "stick",
       "color": "282b30",
       "accent": "dab860",
       "pattern": 5,
       "price": 2700,
-      "metallic": 0.7,
-      "roughness": 0.28
+      "metallic": 0.48,
+      "roughness": 0.3,
+      "artwork": "res://hockey_skin_art/hockey_stick_golden_grip.svg",
+      "description": "Illustrated shaft wrap and blade graphic: Golden Reaper."
     },
     {
       "id": "hockey_stick_obsidian",
-      "name": "Obsidian Edge",
+      "name": "Obsidian Raven",
       "slot": "stick",
       "color": "111a21",
       "accent": "607680",
       "pattern": 3,
       "price": 2800,
-      "metallic": 0.58,
-      "roughness": 0.3
+      "metallic": 0.48,
+      "roughness": 0.3,
+      "artwork": "res://hockey_skin_art/hockey_stick_obsidian.svg",
+      "description": "Illustrated shaft wrap and blade graphic: Obsidian Raven."
     },
     {
       "id": "hockey_stick_glacier_tape",
-      "name": "Glacier Tape",
+      "name": "Frost Dragon",
       "slot": "stick",
       "color": "39718a",
       "accent": "d2e7e6",
       "pattern": 7,
       "price": 3000,
       "metallic": 0.44,
-      "roughness": 0.32
+      "roughness": 0.32,
+      "artwork": "res://hockey_skin_art/hockey_stick_glacier_tape.svg",
+      "description": "Illustrated shaft wrap and blade graphic: Frost Dragon."
     },
     {
       "id": "hockey_stick_prism",
-      "name": "Prism Wrap",
+      "name": "Prism Heart",
       "slot": "stick",
       "color": "35465c",
       "accent": "d7a8b4",
       "pattern": 3,
       "price": 3200,
-      "metallic": 0.62,
-      "roughness": 0.28
+      "metallic": 0.48,
+      "roughness": 0.3,
+      "artwork": "res://hockey_skin_art/hockey_stick_prism.svg",
+      "description": "Illustrated shaft wrap and blade graphic: Prism Heart."
     }
   ]
 }
