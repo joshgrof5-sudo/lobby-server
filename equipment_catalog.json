@@ -327,5 +327,173 @@
     "id": "quest_helmet_rival_breaker",
     "price": 0,
     "type": "helmet"
+  },
+  {
+    "id": "bat_club_duck",
+    "type": "bat",
+    "price": 650,
+    "event": "",
+    "goal": 0
+  },
+  {
+    "id": "bat_club_banana",
+    "type": "bat",
+    "price": 750,
+    "event": "",
+    "goal": 0
+  },
+  {
+    "id": "bat_club_pizza",
+    "type": "bat",
+    "price": 900,
+    "event": "",
+    "goal": 0
+  },
+  {
+    "id": "bat_club_trash",
+    "type": "bat",
+    "price": 1000,
+    "event": "",
+    "goal": 0
+  },
+  {
+    "id": "bat_club_frog",
+    "type": "bat",
+    "price": 1200,
+    "event": "",
+    "goal": 0
+  },
+  {
+    "id": "bat_club_ufo",
+    "type": "bat",
+    "price": 1700,
+    "event": "",
+    "goal": 0
+  },
+  {
+    "id": "bat_club_potato",
+    "type": "bat",
+    "price": 700,
+    "event": "",
+    "goal": 0
+  },
+  {
+    "id": "bat_club_toast",
+    "type": "bat",
+    "price": 850,
+    "event": "",
+    "goal": 0
+  },
+  {
+    "id": "bat_club_ghost",
+    "type": "bat",
+    "price": 2200,
+    "event": "",
+    "goal": 0
+  },
+  {
+    "id": "bat_club_dragon",
+    "type": "bat",
+    "price": 2800,
+    "event": "",
+    "goal": 0
+  },
+  {
+    "id": "bat_club_koi",
+    "type": "bat",
+    "price": 3100,
+    "event": "",
+    "goal": 0
+  },
+  {
+    "id": "bat_club_cherry",
+    "type": "bat",
+    "price": 2100,
+    "event": "",
+    "goal": 0
+  },
+  {
+    "id": "helmet_club_duck",
+    "type": "helmet",
+    "price": 450,
+    "event": "",
+    "goal": 0
+  },
+  {
+    "id": "helmet_club_banana",
+    "type": "helmet",
+    "price": 550,
+    "event": "",
+    "goal": 0
+  },
+  {
+    "id": "helmet_club_pizza",
+    "type": "helmet",
+    "price": 700,
+    "event": "",
+    "goal": 0
+  },
+  {
+    "id": "helmet_club_trash",
+    "type": "helmet",
+    "price": 800,
+    "event": "",
+    "goal": 0
+  },
+  {
+    "id": "helmet_club_frog",
+    "type": "helmet",
+    "price": 950,
+    "event": "",
+    "goal": 0
+  },
+  {
+    "id": "helmet_club_ufo",
+    "type": "helmet",
+    "price": 1400,
+    "event": "",
+    "goal": 0
+  },
+  {
+    "id": "helmet_club_potato",
+    "type": "helmet",
+    "price": 500,
+    "event": "",
+    "goal": 0
+  },
+  {
+    "id": "helmet_club_toast",
+    "type": "helmet",
+    "price": 650,
+    "event": "",
+    "goal": 0
+  },
+  {
+    "id": "helmet_club_ghost",
+    "type": "helmet",
+    "price": 1800,
+    "event": "",
+    "goal": 0
+  },
+  {
+    "id": "helmet_club_dragon",
+    "type": "helmet",
+    "price": 2300,
+    "event": "",
+    "goal": 0
+  },
+  {
+    "id": "helmet_club_koi",
+    "type": "helmet",
+    "price": 2600,
+    "event": "",
+    "goal": 0
+  },
+  {
+    "id": "helmet_club_cherry",
+    "type": "helmet",
+    "price": 1700,
+    "event": "",
+    "goal": 0
   }
 ]

@@ -29,7 +29,7 @@ test('legacy gear transfers once to one account and cannot leak into another acc
 
 test('account shop uses authoritative UTC offers, server prices, one charge and owned-only equips',async t=>{
   const f=await fixture(t),alice=await f.register('alice');await f.initialize(alice);
-  const offer=f.offers()[0],day=f.day();
+  const offer=f.offers().find(item=>item.type==='bat'),day=f.day();
   const results=await Promise.all([1,2].map(()=>f.api(alice,'/v1/inventory/purchase',{item_id:offer.id,day,price:0})));
   assert(results.every(r=>r.status===200));
   const state=await f.api(alice,'/v1/presence');assert.equal(state.inventory.wallet,50000-offer.price);assert.equal(state.inventory.equipped.bat,offer.id);
@@ -37,7 +37,7 @@ test('account shop uses authoritative UTC offers, server prices, one charge and 
   const outside=catalog.find(item=>item.type==='bat'&&item.price>0&&!item.event&&!f.offers().some(offer=>offer.id===item.id));
   assert.equal((await f.api(alice,'/v1/inventory/purchase',{item_id:outside.id,day})).status,409);
   assert.equal((await f.api(alice,'/v1/inventory/equip',{item_id:outside.id})).status,403);
-  const helmet=f.offers()[4];assert.equal((await f.api(alice,'/v1/inventory/purchase',{item_id:helmet.id,day:day-1})).status,409);
+  const helmet=f.offers().find(item=>item.type==='helmet');assert.equal((await f.api(alice,'/v1/inventory/purchase',{item_id:helmet.id,day:day-1})).status,409);
   assert.equal((await f.api(alice,'/v1/inventory/purchase',{item_id:helmet.id,day})).inventory.equipped.helmet,helmet.id);
   assert.equal((await f.api(alice,'/v1/inventory/equip',{item_id:'classic'})).inventory.equipped.bat,'classic');
 });

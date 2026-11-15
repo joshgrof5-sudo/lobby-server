@@ -1,0 +1,270 @@
+{
+  "baseball": [
+    {
+      "id": "bundle_baseball_duck",
+      "name": "Rubber Duck Bundle",
+      "members": [
+        "helmet_club_duck",
+        "bat_club_duck"
+      ],
+      "tier": "goofy",
+      "discount": 20,
+      "description": "Rubber Duck matching helmet + bat. Save 20% on the pieces you do not own."
+    },
+    {
+      "id": "bundle_baseball_banana",
+      "name": "Banana Brain Bundle",
+      "members": [
+        "helmet_club_banana",
+        "bat_club_banana"
+      ],
+      "tier": "goofy",
+      "discount": 20,
+      "description": "Banana Brain matching helmet + bat. Save 20% on the pieces you do not own."
+    },
+    {
+      "id": "bundle_baseball_pizza",
+      "name": "Pizza Party Bundle",
+      "members": [
+        "helmet_club_pizza",
+        "bat_club_pizza"
+      ],
+      "tier": "goofy",
+      "discount": 20,
+      "description": "Pizza Party matching helmet + bat. Save 20% on the pieces you do not own."
+    },
+    {
+      "id": "bundle_baseball_trash",
+      "name": "Trash Panda Bundle",
+      "members": [
+        "helmet_club_trash",
+        "bat_club_trash"
+      ],
+      "tier": "goofy",
+      "discount": 20,
+      "description": "Trash Panda matching helmet + bat. Save 20% on the pieces you do not own."
+    },
+    {
+      "id": "bundle_baseball_frog",
+      "name": "Frog Mode Bundle",
+      "members": [
+        "helmet_club_frog",
+        "bat_club_frog"
+      ],
+      "tier": "goofy",
+      "discount": 20,
+      "description": "Frog Mode matching helmet + bat. Save 20% on the pieces you do not own."
+    },
+    {
+      "id": "bundle_baseball_ufo",
+      "name": "Alien Delivery Bundle",
+      "members": [
+        "helmet_club_ufo",
+        "bat_club_ufo"
+      ],
+      "tier": "goofy",
+      "discount": 20,
+      "description": "Alien Delivery matching helmet + bat. Save 20% on the pieces you do not own."
+    },
+    {
+      "id": "bundle_baseball_potato",
+      "name": "Couch Potato Bundle",
+      "members": [
+        "helmet_club_potato",
+        "bat_club_potato"
+      ],
+      "tier": "goofy",
+      "discount": 20,
+      "description": "Couch Potato matching helmet + bat. Save 20% on the pieces you do not own."
+    },
+    {
+      "id": "bundle_baseball_toast",
+      "name": "Burnt Toast Bundle",
+      "members": [
+        "helmet_club_toast",
+        "bat_club_toast"
+      ],
+      "tier": "goofy",
+      "discount": 20,
+      "description": "Burnt Toast matching helmet + bat. Save 20% on the pieces you do not own."
+    },
+    {
+      "id": "bundle_baseball_ghost",
+      "name": "Arcade Haunt Bundle",
+      "members": [
+        "helmet_club_ghost",
+        "bat_club_ghost"
+      ],
+      "tier": "signature",
+      "discount": 20,
+      "description": "Arcade Haunt matching helmet + bat. Save 20% on the pieces you do not own."
+    },
+    {
+      "id": "bundle_baseball_dragon",
+      "name": "Neon Dynasty Bundle",
+      "members": [
+        "helmet_club_dragon",
+        "bat_club_dragon"
+      ],
+      "tier": "signature",
+      "discount": 20,
+      "description": "Neon Dynasty matching helmet + bat. Save 20% on the pieces you do not own."
+    },
+    {
+      "id": "bundle_baseball_koi",
+      "name": "Midnight Pond Bundle",
+      "members": [
+        "helmet_club_koi",
+        "bat_club_koi"
+      ],
+      "tier": "signature",
+      "discount": 20,
+      "description": "Midnight Pond matching helmet + bat. Save 20% on the pieces you do not own."
+    },
+    {
+      "id": "bundle_baseball_cherry",
+      "name": "Cherry Chaos Bundle",
+      "members": [
+        "helmet_club_cherry",
+        "bat_club_cherry"
+      ],
+      "tier": "signature",
+      "discount": 20,
+      "description": "Cherry Chaos matching helmet + bat. Save 20% on the pieces you do not own."
+    }
+  ],
+  "hockey": [
+    {
+      "id": "bundle_hockey_duck",
+      "name": "Rubber Duck Bundle",
+      "members": [
+        "helmet_hockey_club_duck",
+        "hockey_stick_club_duck"
+      ],
+      "tier": "goofy",
+      "discount": 20,
+      "description": "Rubber Duck matching helmet + stick. Save 20% on the pieces you do not own."
+    },
+    {
+      "id": "bundle_hockey_banana",
+      "name": "Banana Brain Bundle",
+      "members": [
+        "helmet_hockey_club_banana",
+        "hockey_stick_club_banana"
+      ],
+      "tier": "goofy",
+      "discount": 20,
+      "description": "Banana Brain matching helmet + stick. Save 20% on the pieces you do not own."
+    },
+    {
+      "id": "bundle_hockey_pizza",
+      "name": "Pizza Party Bundle",
+      "members": [
+        "helmet_hockey_club_pizza",
+        "hockey_stick_club_pizza"
+      ],
+      "tier": "goofy",
+      "discount": 20,
+      "description": "Pizza Party matching helmet + stick. Save 20% on the pieces you do not own."
+    },
+    {
+      "id": "bundle_hockey_trash",
+      "name": "Trash Panda Bundle",
+      "members": [
+        "helmet_hockey_club_trash",
+        "hockey_stick_club_trash"
+      ],
+      "tier": "goofy",
+      "discount": 20,
+      "description": "Trash Panda matching helmet + stick. Save 20% on the pieces you do not own."
+    },
+    {
+      "id": "bundle_hockey_frog",
+      "name": "Frog Mode Bundle",
+      "members": [
+        "helmet_hockey_club_frog",
+        "hockey_stick_club_frog"
+      ],
+      "tier": "goofy",
+      "discount": 20,
+      "description": "Frog Mode matching helmet + stick. Save 20% on the pieces you do not own."
+    },
+    {
+      "id": "bundle_hockey_ufo",
+      "name": "Alien Delivery Bundle",
+      "members": [
+        "helmet_hockey_club_ufo",
+        "hockey_stick_club_ufo"
+      ],
+      "tier": "goofy",
+      "discount": 20,
+      "description": "Alien Delivery matching helmet + stick. Save 20% on the pieces you do not own."
+    },
+    {
+      "id": "bundle_hockey_potato",
+      "name": "Couch Potato Bundle",
+      "members": [
+        "helmet_hockey_club_potato",
+        "hockey_stick_club_potato"
+      ],
+      "tier": "goofy",
+      "discount": 20,
+      "description": "Couch Potato matching helmet + stick. Save 20% on the pieces you do not own."
+    },
+    {
+      "id": "bundle_hockey_toast",
+      "name": "Burnt Toast Bundle",
+      "members": [
+        "helmet_hockey_club_toast",
+        "hockey_stick_club_toast"
+      ],
+      "tier": "goofy",
+      "discount": 20,
+      "description": "Burnt Toast matching helmet + stick. Save 20% on the pieces you do not own."
+    },
+    {
+      "id": "bundle_hockey_ghost",
+      "name": "Arcade Haunt Bundle",
+      "members": [
+        "helmet_hockey_club_ghost",
+        "hockey_stick_club_ghost"
+      ],
+      "tier": "signature",
+      "discount": 20,
+      "description": "Arcade Haunt matching helmet + stick. Save 20% on the pieces you do not own."
+    },
+    {
+      "id": "bundle_hockey_dragon",
+      "name": "Neon Dynasty Bundle",
+      "members": [
+        "helmet_hockey_club_dragon",
+        "hockey_stick_club_dragon"
+      ],
+      "tier": "signature",
+      "discount": 20,
+      "description": "Neon Dynasty matching helmet + stick. Save 20% on the pieces you do not own."
+    },
+    {
+      "id": "bundle_hockey_koi",
+      "name": "Midnight Pond Bundle",
+      "members": [
+        "helmet_hockey_club_koi",
+        "hockey_stick_club_koi"
+      ],
+      "tier": "signature",
+      "discount": 20,
+      "description": "Midnight Pond matching helmet + stick. Save 20% on the pieces you do not own."
+    },
+    {
+      "id": "bundle_hockey_cherry",
+      "name": "Cherry Chaos Bundle",
+      "members": [
+        "helmet_hockey_club_cherry",
+        "hockey_stick_club_cherry"
+      ],
+      "tier": "signature",
+      "discount": 20,
+      "description": "Cherry Chaos matching helmet + stick. Save 20% on the pieces you do not own."
+    }
+  ]
+}

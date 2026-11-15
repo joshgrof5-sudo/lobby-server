@@ -3,8 +3,8 @@
 # Only mlp-social is restarted. BouncyBallBattle and HTTPS are not restarted.
 set -Eeuo pipefail
 trap 'printf "\nDedicated setup stopped at line %s. Send this output before retrying.\n" "$LINENO" >&2' ERR
-release_url='https://github.com/joshgrof5-sudo/lobby-server/releases/download/server-v1.6.14/mlp-dedicated-1.6.14-linux-x86_64.tar.gz'
-release_sha='ab88fa399a4810116c045e7eef6807c9751e5b472037ddb387f7b984b0a32166'
+release_url='https://github.com/joshgrof5-sudo/lobby-server/releases/download/server-v1.7.0/mlp-dedicated-1.7.0-linux-x86_64.tar.gz'
+release_sha='2ef44780b4c92f6548dd0e67a45a35bcca0ca0db7b04449177d17557407f2881'
 app=/opt/mlp-social/app
 node=/opt/mlp-social/runtime/bin/node
 database=/var/lib/mlp-social/social.sqlite
@@ -37,13 +37,13 @@ staging=$(mktemp -d /opt/mlp-social/dedicated-update.XXXXXXXX)
 curl --fail --location --retry 2 --connect-timeout 15 --max-time 300 --proto '=https' "$release_url" -o "$staging/release.tar.gz"
 printf '%s  %s\n' "$release_sha" "$staging/release.tar.gz" | sha256sum --check -
 while IFS= read -r member; do
-    case "$member" in mlp-game.x86_64|mlp-game.pck|server.mjs|dedicated.mjs|inventory.mjs|cloud.mjs|hockey_skin_catalog.json|cloud.test.mjs|equipment_catalog.json|package.json|server.test.mjs|matchmaking.test.mjs|inventory.test.mjs|dedicated.test.mjs|release.json|GODOT-LICENSE.txt) ;;
+    case "$member" in mlp-game.x86_64|mlp-game.pck|server.mjs|dedicated.mjs|inventory.mjs|cloud.mjs|profiles.mjs|profiles.test.mjs|hockey_skin_catalog.json|equipment_bundles.json|cloud.test.mjs|equipment_catalog.json|package.json|server.test.mjs|matchmaking.test.mjs|inventory.test.mjs|dedicated.test.mjs|release.json|GODOT-LICENSE.txt) ;;
         *) echo "Unexpected release entry: $member" >&2; exit 1;; esac
 done < <(tar -tzf "$staging/release.tar.gz")
 install -d -m 0755 "$staging/source"
 tar -xzf "$staging/release.tar.gz" -C "$staging/source" --no-same-owner
 cd "$staging/source"
-UV_THREADPOOL_SIZE=2 nice -n 15 "$node" --test --test-concurrency=1 server.test.mjs matchmaking.test.mjs inventory.test.mjs dedicated.test.mjs cloud.test.mjs
+UV_THREADPOOL_SIZE=2 nice -n 15 "$node" --test --test-concurrency=1 server.test.mjs matchmaking.test.mjs inventory.test.mjs dedicated.test.mjs cloud.test.mjs profiles.test.mjs
 release=/opt/mlp-social/matches/releases/${release_sha:0:16}
 install -d -m 0755 "$release"
 install -m 0755 mlp-game.x86_64 "$release/mlp-game.x86_64"
@@ -51,6 +51,9 @@ install -m 0644 mlp-game.pck release.json GODOT-LICENSE.txt "$release/"
 runuser -u mlp-social -- env HOME=/var/lib/mlp-social MLP_DEDICATED=1 MLP_DEDICATED_SELF_TEST=1 nice -n 15 "$release/mlp-game.x86_64" --headless > "$staging/pack-check.log" 2>&1
 cat "$staging/pack-check.log"
 grep -q 'DEDICATED PACK CHECK PASSED' "$staging/pack-check.log"
+runuser -u mlp-social -- env HOME=/var/lib/mlp-social MLP_DEDICATED=1 MLP_DEDICATED_SELF_TEST=1 MLP_MATCH_MODE=football nice -n 15 "$release/mlp-game.x86_64" --headless > "$staging/football-pack-check.log" 2>&1
+cat "$staging/football-pack-check.log"
+grep -q 'DEDICATED FOOTBALL PACK CHECK PASSED' "$staging/football-pack-check.log"
 
 umask 077
 install -d -m 0700 /var/lib/mlp-social/backups "$staging/previous"
@@ -60,7 +63,7 @@ import {DatabaseSync,backup} from 'node:sqlite';
 const source=new DatabaseSync(process.argv[2],{readOnly:true});
 await backup(source,process.argv[3]);source.close();
 JS
-files=(server.mjs dedicated.mjs inventory.mjs cloud.mjs hockey_skin_catalog.json cloud.test.mjs equipment_catalog.json package.json server.test.mjs matchmaking.test.mjs inventory.test.mjs dedicated.test.mjs)
+files=(server.mjs dedicated.mjs inventory.mjs cloud.mjs profiles.mjs profiles.test.mjs hockey_skin_catalog.json equipment_bundles.json cloud.test.mjs equipment_catalog.json package.json server.test.mjs matchmaking.test.mjs inventory.test.mjs dedicated.test.mjs)
 for file in "${files[@]}"; do if [[ -f $app/$file ]]; then cp "$app/$file" "$staging/previous/$file"; fi; done
 if [[ -f $dropin ]]; then cp "$dropin" "$staging/previous/dedicated.conf"; fi
 rollback() {
@@ -98,13 +101,13 @@ systemctl daemon-reload
 systemctl start mlp-social.service
 healthy=0
 for attempt in {1..20}; do
-    if "$node" --input-type=module -e "const r=await fetch('http://127.0.0.1:18081/health',{signal:AbortSignal.timeout(1500)});const d=await r.json();if(!r.ok||!d.dedicated_matches||d.game_version!=='1.5.4'||d.hockey_version!=='1.6.1-hockey'||d.server_release!=='1.6.14'||!d.hockey_cloud)process.exit(1)" 2>/dev/null; then healthy=1; break; fi
+    if "$node" --input-type=module -e "const r=await fetch('http://127.0.0.1:18081/health',{signal:AbortSignal.timeout(1500)});const d=await r.json();if(!r.ok||!d.dedicated_matches||d.game_version!=='1.5.4'||d.hockey_version!=='1.6.1-hockey'||d.server_release!=='1.7.0'||d.football_version!=='1.7.0-football'||!d.sports.includes('football')||!d.hockey_cloud||!d.player_profiles)process.exit(1)" 2>/dev/null; then healthy=1; break; fi
     sleep 1
 done
 (( healthy == 1 )) || rollback
 trap - ERR
 if command -v ufw >/dev/null && ufw status | grep -q '^Status: active'; then ufw allow 7002/udp comment 'Baseball dedicated match'; fi
-printf '\nBASEBALL AND HOCKEY SERVER READY\n'
+printf '\nBASEBALL, HOCKEY AND FOOTBALL SERVER READY\n'
 curl --fail --max-time 10 http://127.0.0.1:18081/health
 printf '\nExisting other-game listener (UDP 7777):\n'
 ss -lnup 'sport = :7777'

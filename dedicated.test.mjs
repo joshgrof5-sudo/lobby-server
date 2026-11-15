@@ -92,3 +92,23 @@ test('an existing party can use the new game patch without losing its members',a
   assert.equal(updated.party.members.length,2);
   assert.equal(updated.match.members.length,2);
 });
+
+
+test('football has six-player parties, twelve-player matches, isolated queues and football workers',async t=>{
+  const f=await fixture(t),football=await f.register('football_captain');
+  const party=(await f.api(football,'/v1/parties/create',{mode:'football',version:'1.7.0-football'})).party;
+  assert.equal(party.mode,'football'); assert.equal(party.max,6);
+  for(let i=0;i<5;i++){
+    const friend=await f.register('football_friend_'+i);
+    await f.api(friend,'/v1/parties/join',{code:party.code});
+  }
+  const extra=await f.register('football_extra');
+  await f.api(extra,'/v1/parties/join',{code:party.code},409);
+  await f.api(football,'/v1/matchmaking/join',{version:'1.6.1-hockey'},409);
+  const match=(await f.api(football,'/v1/matchmaking/join',{version:'1.7.0-football'})).match;
+  assert.notEqual(match.id,f.match.id); assert.equal(match.mode,'football'); assert.equal(match.max,12); assert.equal(match.bots,6);
+  await f.playing(); await f.worker('finish');
+  f.advance(30); await f.api(football,'/v1/presence'); f.advance(31); await f.api(football,'/v1/presence');
+  const worker=[...f.service.pool.workers.values()][0];
+  assert.ok(worker); assert.equal(worker.child.env.MLP_MATCH_MODE,'football');
+});

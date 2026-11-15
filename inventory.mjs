@@ -1,6 +1,8 @@
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 export const catalog=JSON.parse(readFileSync(new URL('./equipment_catalog.json',import.meta.url),'utf8'));
+export const bundles=JSON.parse(readFileSync(new URL('./equipment_bundles.json',import.meta.url),'utf8')).baseball;
+const bundleItems=new Map(bundles.map(bundle=>[bundle.id,bundle]));
 const items=new Map(catalog.map(item=>[item.id,item]));
 items.set('classic',{id:'classic',type:'bat',price:0,event:'',goal:0});
 const events=new Set(catalog.filter(item=>item.event).map(item=>item.event));
@@ -9,8 +11,14 @@ function check(value,message,status=400){if(!value)throw Object.assign(new Error
 export function dailyOffers(time=Date.now()){
   const day=Math.floor(time/86400000);
   return ['bat','helmet'].flatMap(type=>catalog.filter(item=>item.type===type&&item.price>0&&!item.event)
-    .map(item=>({item,rank:createHash('sha256').update(`mlp-daily-v2|${day}|${type}|${item.id}`).digest('hex')}))
-    .sort((a,b)=>a.rank<b.rank?-1:a.rank>b.rank?1:a.item.id.localeCompare(b.item.id)).slice(0,4).map(entry=>entry.item));
+    .map(item=>({item,rank:createHash('sha256').update(`mlp-daily-v3|${day}|${type}|${item.id}`).digest('hex')}))
+    .sort((a,b)=>a.rank<b.rank?-1:a.rank>b.rank?1:a.item.id.localeCompare(b.item.id)).slice(0,6).map(entry=>entry.item));
+}
+export function dailyBundles(time=Date.now()){
+  const day=Math.floor(time/86400000);
+  return ['goofy','signature'].flatMap(tier=>bundles.filter(bundle=>bundle.tier===tier)
+    .map(bundle=>({bundle,rank:createHash('sha256').update(`mlp-daily-v3|${day}|bundle-baseball-${tier}|${bundle.id}`).digest('hex')}))
+    .sort((a,b)=>a.rank.localeCompare(b.rank)||a.bundle.id.localeCompare(b.bundle.id)).slice(0,1).map(entry=>entry.bundle));
 }
 
 export function createInventory(db,clock=Date.now){
@@ -50,6 +58,21 @@ export function createInventory(db,clock=Date.now){
   });
   const requireReady=user=>check(ensure(user).initialized,'Wait for your account locker to finish loading.',409);
   const purchase=(user,data)=>transaction(()=>{
+    const bundle=bundleItems.get(String(data.item_id??''));
+    if(bundle){
+      requireReady(user);
+      const missing=bundle.members.filter(id=>!has(user,id));
+      if(!missing.length)return view(user);
+      check(data.day===Math.floor(clock()/86400000)&&dailyBundles(clock()).some(offer=>offer.id===bundle.id),"The shop refreshed. Check today's bundles.",409);
+      const price=missing.reduce((total,id)=>total+Math.floor(items.get(id).price*80/100),0);
+      check(ensure(user).wallet>=price,'Not enough Club Cash.',409);
+      run('UPDATE account_inventory SET wallet=wallet-? WHERE user_id=?',price,user);
+      const fresh=JSON.parse(ensure(user).new_ids);
+      for(const id of missing){run('INSERT INTO inventory_items VALUES(?,?)',user,id);fresh.push(id);}
+      for(const id of bundle.members)run(`UPDATE account_inventory SET ${items.get(id).type==='bat'?'bat':'helmet'}=? WHERE user_id=?`,id,user);
+      run('UPDATE account_inventory SET new_ids=? WHERE user_id=?',JSON.stringify(fresh),user);
+      bump(user);return view(user);
+    }
     requireReady(user);const item=items.get(String(data.item_id??''));
     check(item&&item.price>0&&!item.event,'This item cannot be bought.');
     if(has(user,item.id))return view(user);
