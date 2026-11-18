@@ -77,7 +77,9 @@ test('friend requests, party invites, verified peer tickets and leader-only rout
   await api('/v1/parties/route',{port:7000,mode:'classic',started:true},alice.token);
   assert.equal((await api('/v1/parties/join',{code:party.code},eve.token)).status,409);
   await api('/v1/parties/leave',{},alice.token);
-  assert.equal((await api('/v1/social',undefined,bob.token)).party,null);
+  const remaining=(await api('/v1/social',undefined,bob.token)).party;
+  assert.equal(remaining.host_id,bob.user.id);assert.equal(remaining.members.length,1);
+  assert.equal(remaining.started,false);assert.equal(remaining.port,0);
 });
 
 test('friend request inboxes are private, recipients can decline, senders can cancel, and reciprocal requests stay clear',async t=>{

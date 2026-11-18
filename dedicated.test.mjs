@@ -11,8 +11,8 @@ async function fixture(t){
   const api=async(account,path,data={},expected=200,extra={})=>{const r=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json',...(account?{Authorization:`Bearer ${account.token}`}:{...extra})},body:JSON.stringify(data)});const d=await r.json();assert.equal(r.status,expected,JSON.stringify(d));return d;};
   const register=username=>api(null,'/v1/auth/register',{username,password:'dedicated-test-password'});
   const captain=await register('dedicated_captain'),friend=await register('dedicated_friend');
-  const party=(await api(captain,'/v1/parties/create',{version:'1.5.4'})).party;await api(friend,'/v1/parties/join',{code:party.code});
-  const match=(await api(captain,'/v1/matchmaking/join',{version:'1.5.4'})).match;
+  const party=(await api(captain,'/v1/parties/create',{version:'1.5.5'})).party;await api(friend,'/v1/parties/join',{code:party.code});
+  const match=(await api(captain,'/v1/matchmaking/join',{version:'1.5.5'})).match;
   time+=60000;await api(captain,'/v1/presence');assert.equal(children.length,1);
   const child=children[0];
   const worker=(action,data={},expected=200,key=child.env.MLP_WORKER_KEY)=>api(null,'/internal/match',{action,match_id:match.id,...data},expected,{'X-MLP-Worker':key});
@@ -24,9 +24,9 @@ async function fixture(t){
 test('hockey uses the shared account service, a separate ten-skater queue and a hockey worker',async t=>{
   const f=await fixture(t);
   const hockey=await f.register('hockey_captain');
-  const party=(await f.api(hockey,'/v1/parties/create',{mode:'hockey',version:'1.6.1-hockey'})).party;
+  const party=(await f.api(hockey,'/v1/parties/create',{mode:'hockey',version:'1.6.2-hockey'})).party;
   assert.equal(party.mode,'hockey');assert.equal(party.max,5);
-  const match=(await f.api(hockey,'/v1/matchmaking/join',{version:'1.6.1-hockey'})).match;
+  const match=(await f.api(hockey,'/v1/matchmaking/join',{version:'1.6.2-hockey'})).match;
   assert.notEqual(match.id,f.match.id);assert.equal(match.mode,'hockey');assert.equal(match.max,10);assert.equal(match.bots,9);
   await f.playing();await f.worker('finish');
   f.advance(30);await f.api(hockey,'/v1/presence');f.advance(31);await f.api(hockey,'/v1/presence');
@@ -62,7 +62,7 @@ test('one disconnected party member does not remove their connected friends; wor
   const f=await fixture(t);await f.playing();
   await f.api(f.captain,'/v1/matchmaking/fail');
   const state=await f.api(f.friend,'/v1/presence');assert.equal(state.match.members.length,1);assert.equal(state.match.id,f.match.id);
-  await f.api(f.captain,'/v1/matchmaking/join',{version:'1.5.4'},409);
+  await f.api(f.captain,'/v1/matchmaking/join',{version:'1.5.5'},409);
   await f.api(f.captain,'/v1/parties/leave');
   assert.equal((await f.api(f.friend,'/v1/presence')).match.id,f.match.id);
   f.child.emit('exit',1);
@@ -71,8 +71,8 @@ test('one disconnected party member does not remove their connected friends; wor
 
 test('one-slot dedicated capacity queues another match and frees the slot after completion',async t=>{
   const f=await fixture(t);await f.playing();
-  const waiting=await f.register('waiting_player');await f.api(waiting,'/v1/parties/create',{version:'1.5.4'});
-  const next=(await f.api(waiting,'/v1/matchmaking/join',{version:'1.5.4'})).match;
+  const waiting=await f.register('waiting_player');await f.api(waiting,'/v1/parties/create',{version:'1.5.5'});
+  const next=(await f.api(waiting,'/v1/matchmaking/join',{version:'1.5.5'})).match;
   await f.api(f.captain,'/v1/presence');await f.api(f.friend,'/v1/presence');
   f.advance(60);
   const queued=(await f.api(waiting,'/v1/presence')).match;
@@ -87,8 +87,8 @@ test('an existing party can use the new game patch without losing its members',a
   await f.worker('finish');
   f.service.db.prepare('UPDATE parties SET version=?').run('1.3.0');
   await f.api(f.friend,'/v1/presence');
-  const updated=await f.api(f.captain,'/v1/matchmaking/join',{version:'1.5.4'});
-  assert.equal(updated.party.version,'1.5.4');
+  const updated=await f.api(f.captain,'/v1/matchmaking/join',{version:'1.5.5'});
+  assert.equal(updated.party.version,'1.5.5');
   assert.equal(updated.party.members.length,2);
   assert.equal(updated.match.members.length,2);
 });
@@ -96,7 +96,7 @@ test('an existing party can use the new game patch without losing its members',a
 
 test('football has six-player parties, twelve-player matches, isolated queues and football workers',async t=>{
   const f=await fixture(t),football=await f.register('football_captain');
-  const party=(await f.api(football,'/v1/parties/create',{mode:'football',version:'1.7.0-football'})).party;
+  const party=(await f.api(football,'/v1/parties/create',{mode:'football',version:'1.7.1-football'})).party;
   assert.equal(party.mode,'football'); assert.equal(party.max,6);
   for(let i=0;i<5;i++){
     const friend=await f.register('football_friend_'+i);
@@ -104,8 +104,8 @@ test('football has six-player parties, twelve-player matches, isolated queues an
   }
   const extra=await f.register('football_extra');
   await f.api(extra,'/v1/parties/join',{code:party.code},409);
-  await f.api(football,'/v1/matchmaking/join',{version:'1.6.1-hockey'},409);
-  const match=(await f.api(football,'/v1/matchmaking/join',{version:'1.7.0-football'})).match;
+  await f.api(football,'/v1/matchmaking/join',{version:'1.6.2-hockey'},409);
+  const match=(await f.api(football,'/v1/matchmaking/join',{version:'1.7.1-football'})).match;
   assert.notEqual(match.id,f.match.id); assert.equal(match.mode,'football'); assert.equal(match.max,12); assert.equal(match.bots,6);
   await f.playing(); await f.worker('finish');
   f.advance(30); await f.api(football,'/v1/presence'); f.advance(31); await f.api(football,'/v1/presence');

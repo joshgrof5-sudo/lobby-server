@@ -25,7 +25,7 @@ export function createDedicatedPool(options,onExit,controlURL){
       const worker={child,key,port,ready:false,seen:Date.now(),started:Date.now()};workers.set(game.id,worker);
       // Game logs contain no account passwords, session tokens or worker keys.
       for(const stream of [child.stdout,child.stderr])stream.on('data',data=>{if(options.log)options.log(String(data));});
-      const exited=()=>{if(workers.get(game.id)!==worker)return;workers.delete(game.id);if(!closing)onExit(game.id);};
+      const exited=(code,signal)=>{if(workers.get(game.id)!==worker)return;if(options.log)options.log(`Dedicated worker exited: code=${code??'none'} signal=${signal??'none'}\n`);workers.delete(game.id);if(!closing)onExit(game.id);};
       child.once('exit',exited);child.once('error',exited);
       return worker;
     },

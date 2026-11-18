@@ -1,0 +1,28 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createService} from './server.mjs';
+test('party leadership and removal are authorized, sport-preserving and locked during matchmaking',async t=>{
+ const service=createService({authLimit:100}); await new Promise(r=>service.server.listen(0,'127.0.0.1',r));t.after(()=>service.close());
+ const base=`http://127.0.0.1:${service.server.address().port}`;
+ const api=async(account,path,data={})=>{const response=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json',...(account?{Authorization:`Bearer ${account.token}`}:{})},body:JSON.stringify(data)});return {status:response.status,...await response.json()};};
+ const register=name=>api(null,'/v1/auth/register',{username:name,password:'long-local-party-test-password'});
+ const leader=await register('captain'),friend=await register('teammate'),outsider=await register('outsider');
+ const party=(await api(leader,'/v1/parties/create',{mode:'hockey',version:'1.6.2-hockey'})).party;
+ assert.equal((await api(friend,'/v1/parties/join',{code:party.code})).status,200);
+ const route=await api(leader,'/v1/parties/route',{mode:'hockey',port:18802,lan_ip:'127.0.0.1',version:'1.6.2-hockey'});
+ assert.equal(route.party.mode,'hockey');
+ assert.equal((await api(friend,'/v1/parties/kick',{user_id:leader.user.id})).status,403);
+ assert.equal((await api(outsider,'/v1/parties/leader',{user_id:friend.user.id})).status,403);
+ assert.equal((await api(leader,'/v1/parties/leader',{user_id:outsider.user.id})).status,400);
+ const transferred=await api(leader,'/v1/parties/leader',{user_id:friend.user.id});
+ assert.equal(transferred.party.host_id,friend.user.id);assert.equal(transferred.party.members.length,2);
+ assert.equal(transferred.party.port,0,'old leader route must not follow the new leader');
+ assert.equal((await api(leader,'/v1/parties/kick',{user_id:friend.user.id})).status,403);
+ const proof=await api(leader,'/v1/tickets');
+ assert.equal((await api(friend,'/v1/parties/kick',{user_id:leader.user.id})).status,200);
+ assert.equal((await api(friend,'/v1/tickets/verify',{ticket:proof.ticket})).status,403);
+ assert.equal((await api(leader,'/v1/parties/join',{code:party.code})).status,200);
+ assert.equal((await api(friend,'/v1/matchmaking/join',{version:'1.6.2-hockey'})).status,200);
+ assert.equal((await api(friend,'/v1/parties/kick',{user_id:leader.user.id})).status,409);
+ assert.equal((await api(friend,'/v1/parties/leader',{user_id:leader.user.id})).status,409);
+});

@@ -28,6 +28,7 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
   db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
     CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE COLLATE NOCASE, salt TEXT NOT NULL, password_hash TEXT NOT NULL, seen INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS sessions(hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS recovery_codes(hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE);
     CREATE TABLE IF NOT EXISTS friends(a TEXT NOT NULL REFERENCES users(id), b TEXT NOT NULL REFERENCES users(id), PRIMARY KEY(a,b), CHECK(a<b));
     CREATE TABLE IF NOT EXISTS requests(id TEXT PRIMARY KEY, sender TEXT NOT NULL REFERENCES users(id), receiver TEXT NOT NULL REFERENCES users(id), UNIQUE(sender,receiver), CHECK(sender<>receiver));
     CREATE TABLE IF NOT EXISTS parties(id TEXT PRIMARY KEY, code TEXT NOT NULL UNIQUE, host TEXT NOT NULL REFERENCES users(id), ip TEXT NOT NULL, lan_ip TEXT NOT NULL DEFAULT '', port INTEGER NOT NULL DEFAULT 7000, mode TEXT NOT NULL, started INTEGER NOT NULL DEFAULT 0, public INTEGER NOT NULL DEFAULT 0, version TEXT NOT NULL DEFAULT '1.1.0');
@@ -140,7 +141,13 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
     const party = membership(userId);
     if (!party) return;
     const game=userMatch(userId);
-    if(!game?.dedicated&&!one('SELECT 1 FROM matches WHERE host_party=? AND dedicated=1',party.id)){cancelGroup(party);if(party.host===userId)run('DELETE FROM parties WHERE id=?',party.id);else run('DELETE FROM members WHERE user_id=?',userId);return;}
+    if(!game?.dedicated&&!one('SELECT 1 FROM matches WHERE host_party=? AND dedicated=1',party.id)){
+      cancelGroup(party);run('DELETE FROM members WHERE user_id=?',userId);
+      const next=one('SELECT user_id FROM members WHERE party_id=? ORDER BY user_id LIMIT 1',party.id);
+      if(!next)run('DELETE FROM parties WHERE id=?',party.id);
+      else if(party.host===userId)run('UPDATE parties SET host=?,ip=?,lan_ip=?,port=0,public=0,started=0 WHERE id=?',next.user_id,'','',party.id);
+      return;
+    }
     if(game?.dedicated && game.phase!=='searching')run('DELETE FROM match_members WHERE user_id=?',userId);
     else if(game)cancelGroup(party);
     run('DELETE FROM members WHERE user_id=?', userId);
@@ -169,7 +176,7 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
   async function route(req) {
     const url = new URL(req.url, 'http://localhost'); const path = url.pathname; const method = req.method;
     cleanup();
-    if (method === 'GET' && (path === '/' || path === '/health')) return { service: 'mlp-social', version: 1, matchmaking:true, account_inventory:true,dedicated_matches:!!pool,game_version:'1.5.4',server_release:'1.7.1',hockey_version:'1.6.1-hockey',hockey_cloud:true,player_profiles:true,football_version:'1.7.0-football',sports:['baseball','hockey','football'] };
+    if (method === 'GET' && (path === '/' || path === '/health')) return { service: 'mlp-social', version: 1, matchmaking:true, account_inventory:true,dedicated_matches:!!pool,game_version:'1.5.5',server_release:'1.8.0',hockey_version:'1.6.2-hockey',hockey_cloud:true,player_profiles:true,football_version:'1.7.1-football',sports:['baseball','hockey','football'] };
     if(method==='POST'&&path==='/internal/match'){
       const data=await body(req),worker=pool?.authenticate(String(data.match_id??''),req.headers['x-mlp-worker']);
       requireValue(worker,403,'Invalid match worker.');
@@ -192,7 +199,7 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
     if (method === 'GET' && path === '/lobbies') {
       return all('SELECT * FROM parties WHERE public=1 AND started=0 AND version=?', url.searchParams.get('v') || '1.1.0').map(p => ({ ...partyView(p), name: one('SELECT username FROM users WHERE id=?',p.host).username, players: one('SELECT COUNT(*) AS n FROM members WHERE party_id=?',p.id).n }));
     }
-    if (path === '/v1/auth/register' || path === '/v1/auth/login') {
+    if (path === '/v1/auth/register' || path === '/v1/auth/login' || path === '/v1/auth/recover') {
       requireValue(method === 'POST',405,'Use POST.');
       const key = ipFor(req), bucket = limits.get(key) ?? { count: 0, until: clock()+60000 };
       if (bucket.until <= clock()) { bucket.count=0; bucket.until=clock()+60000; }
@@ -213,6 +220,19 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
           user = { id:id(), username, salt, password_hash:hash.toString('hex') };
           try { run('INSERT INTO users VALUES(?,?,?,?,?)', user.id,username,salt,user.password_hash,now()); }
           catch(error) { if (String(error.message).includes('UNIQUE')) throw new ApiError(409,'That username is already taken.'); throw error; }
+        } else if(path.endsWith('/recover')) {
+          const code=String(data.recovery_code??'').replace(/[\s-]/g,'').toUpperCase();
+          const proof=one('SELECT * FROM recovery_codes WHERE hash=? AND user_id=?',digest(code),user?.id??'');
+          requireValue(proof,401,'Username or recovery code is incorrect.');
+          const salt=randomBytes(16).toString('hex');
+          const hash=await scrypt(password,salt,64,{N:32768,r:8,p:1,maxmem:64*1024*1024});
+          transaction(()=>{
+            requireValue(one('SELECT 1 FROM recovery_codes WHERE hash=? AND user_id=?',digest(code),user.id),401,'Username or recovery code is incorrect.');
+            run('DELETE FROM recovery_codes WHERE hash=?',digest(code));
+            run('UPDATE users SET salt=?,password_hash=?,seen=? WHERE id=?',salt,hash.toString('hex'),now(),user.id);
+            run('DELETE FROM sessions WHERE user_id=?',user.id);
+          });
+          user.salt=salt;user.password_hash=hash.toString('hex');
         } else {
           // Derive even for unknown accounts to avoid a fast account-enumeration path.
           const salt = user?.salt ?? '00000000000000000000000000000000';
@@ -220,6 +240,7 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
           requireValue(user && timingSafeEqual(hash,Buffer.from(user.password_hash,'hex')),401,'Username or password is incorrect.');
           run('UPDATE users SET seen=? WHERE id=?',now(),user.id);
         }
+        requireValue(one('SELECT password_hash FROM users WHERE id=?',user.id)?.password_hash===user.password_hash,401,'Account security changed. Please sign in again.');
         const access = token();
         run('INSERT INTO sessions VALUES(?,?,?)',digest(access),user.id,now()+30*86400);
         return { token:access, user:publicUser(user) };
@@ -244,6 +265,22 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
     if (method === 'GET' && path === '/v1/social') return state(user);
     if (method === 'POST' && path === '/v1/presence') { run('UPDATE users SET seen=? WHERE id=?',now(),user.id); return state(user); }
     const data = await body(req);
+    if(method==='POST' && path==='/v1/account/recovery/new') {
+      requireValue(activeAuth<authConcurrency,503,'Sign-in is busy. Try again shortly.');
+      const password=String(data.password??'');requireValue(password.length>=10 && Buffer.byteLength(password)<=256,400,'Enter your current password.');
+      const rateKey='recovery:'+user.id,bucket=limits.get(rateKey)??{count:0,until:clock()+60000};
+      if(bucket.until<=clock()){bucket.count=0;bucket.until=clock()+60000;}bucket.count++;limits.set(rateKey,bucket);
+      requireValue(bucket.count<=5,429,'Too many attempts. Try again in a minute.');
+      activeAuth++;
+      try {
+        const hash=await scrypt(password,user.salt,64,{N:32768,r:8,p:1,maxmem:64*1024*1024});
+        requireValue(timingSafeEqual(hash,Buffer.from(user.password_hash,'hex')),403,'Current password is incorrect.');
+        requireValue(one('SELECT password_hash FROM users WHERE id=?',user.id)?.password_hash===user.password_hash && one('SELECT 1 FROM sessions WHERE hash=? AND user_id=?',digest(req.headers.authorization.slice(7)),user.id),401,'Please sign in again.');
+        const codes=Array.from({length:8},()=>randomBytes(10).toString('hex').toUpperCase());
+        transaction(()=>{run('DELETE FROM recovery_codes WHERE user_id=?',user.id);for(const code of codes)run('INSERT INTO recovery_codes VALUES(?,?)',digest(code),user.id);});
+        return {codes};
+      }finally{activeAuth--;}
+    }
     if(method==='POST' && path.startsWith('/v1/inventory/')){
       const action=path.slice('/v1/inventory/'.length);
       requireValue(['migrate','purchase','equip','earn','seen'].includes(action),404,'Unknown locker action.');
@@ -260,9 +297,9 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
       requireValue(members.length<=(party.mode==='football'?6:party.mode==='hockey'?5:7),409,'This party exceeds the team size for its sport.');
       requireValue(members.every(member=>member.seen>=now()-30),409,'Wait for everyone in your party to reconnect.');
       const version=String(data.version ?? '1.2.0');
-      if(pool&&version===(party.mode==='football'?'1.7.0-football':party.mode==='hockey'?'1.6.1-hockey':'1.5.4')&&party.version!==version){run('UPDATE parties SET version=? WHERE id=?',version,party.id);party.version=version;}
+      if(pool&&version===(party.mode==='football'?'1.7.1-football':party.mode==='hockey'?'1.6.2-hockey':'1.5.5')&&party.version!==version){run('UPDATE parties SET version=? WHERE id=?',version,party.id);party.version=version;}
       requireValue(version===party.version,409,'Everyone needs the same game update.');
-      if(pool)requireValue(version===(party.mode==='football'?'1.7.0-football':party.mode==='hockey'?'1.6.1-hockey':'1.5.4'),409,'Install the dedicated-server game update before finding a match.');
+      if(pool)requireValue(version===(party.mode==='football'?'1.7.1-football':party.mode==='hockey'?'1.6.2-hockey':'1.5.5'),409,'Install the dedicated-server game update before finding a match.');
       transaction(()=>{
         let game,team;
         for(const candidate of all("SELECT * FROM matches WHERE phase='searching' AND deadline>? AND version=? AND mode=? ORDER BY created,id",now()+5,version,party.mode)) {
@@ -347,7 +384,7 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
       const party = membership(user.id); requireValue(party && party.host === user.id,403,'Only the party leader can publish the lobby.');
       requireValue(Number.isInteger(data.port) && data.port>=1024 && data.port<=65535,400,'Invalid game port.');
       const lan = String(data.lan_ip ?? ''); requireValue(!lan || isIP(lan),400,'Invalid local address.');
-      run('UPDATE parties SET ip=?,lan_ip=?,port=?,started=?,public=?,mode=?,version=? WHERE id=?',ipFor(req),lan,data.port,data.started?1:0,data.public?1:0,data.mode === 'derby' ? 'derby':'classic',String(data.version ?? '1.1.0').slice(0,24),party.id);
+      run('UPDATE parties SET ip=?,lan_ip=?,port=?,started=?,public=?,mode=?,version=? WHERE id=?',ipFor(req),lan,data.port,data.started?1:0,data.public?1:0,['derby','hockey','football'].includes(data.mode)?data.mode:'classic',String(data.version ?? '1.1.0').slice(0,24),party.id);
       return state(user);
     }
     if (method === 'POST' && path === '/v1/parties/invite') {
@@ -375,6 +412,21 @@ export function createService({ database = ':memory:', clock = () => Date.now(),
         run('INSERT OR IGNORE INTO members VALUES(?,?)',user.id,party.id);
         run('DELETE FROM invites WHERE receiver=? AND party_id=?',user.id,party.id);
         run('UPDATE users SET seen=? WHERE id=?',now(),user.id);
+      });
+      return state(user);
+    }
+    if(method==='POST' && ['/v1/parties/leader','/v1/parties/kick'].includes(path)) {
+      const party=membership(user.id),target=String(data.user_id??'');
+      requireValue(party && party.host===user.id,403,'Only your party leader can manage members.');
+      requireValue(!party.started && !one('SELECT 1 FROM match_parties WHERE party_id=?',party.id),409,'Return to the party lobby before changing members.');
+      requireValue(target!==user.id && membership(target)?.id===party.id,400,'Choose another member of your party.');
+      transaction(()=>{
+        if(path.endsWith('/leader'))run('UPDATE parties SET host=?,ip=?,lan_ip=?,port=0,public=0 WHERE id=?',target,'','',party.id);
+        else {
+          run('DELETE FROM members WHERE user_id=? AND party_id=?',target,party.id);
+          run('DELETE FROM tickets WHERE user_id=? AND party_id=?',target,party.id);
+          run('DELETE FROM invites WHERE receiver=? AND party_id=?',target,party.id);
+        }
       });
       return state(user);
     }
